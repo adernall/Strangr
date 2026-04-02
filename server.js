@@ -14,32 +14,31 @@ const io = new Server(server, {
 app.use(express.static(path.join(__dirname, "public")));
 
 // ── In-memory state ──────────────────────────────────────────────────────────
-let waitingQueue = []; // socket IDs waiting for a match
-const rooms = {};     // roomId → { users: [socketId, socketId] }
-const userRoom = {};  // socketId → roomId  (reverse lookup)
+const waitingQueues = { 2: [], 4: [], 6: [] };
+const rooms    = {};  // roomId → { users: [], size, createdAt }
+const userRoom = {};  // socketId → roomId
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function generateRoomId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function removeFromQueue(socketId) {
-  waitingQueue = waitingQueue.filter((id) => id !== socketId);
+function removeFromAllQueues(socketId) {
+  for (const size of [2, 4, 6]) {
+    waitingQueues[size] = waitingQueues[size].filter((id) => id !== socketId);
+  }
 }
 
-function createRoom(socketA, socketB) {
+function createRoom(users, size) {
   const roomId = generateRoomId();
-  rooms[roomId] = { users: [socketA, socketB], createdAt: Date.now() };
-  userRoom[socketA] = roomId;
-  userRoom[socketB] = roomId;
+  rooms[roomId] = { users: [...users], size, createdAt: Date.now() };
 
-  io.sockets.sockets.get(socketA)?.join(roomId);
-  io.sockets.sockets.get(socketB)?.join(roomId);
-
-  io.to(socketA).emit("matched", { roomId });
-  io.to(socketB).emit("matched", { roomId });
-
-  console.log(`[room] created ${roomId} → [${socketA}, ${socketB}]`);
+  for (const uid of users) {
+    userRoom[uid] = roomId;
+    io.sockets.sockets.get(uid)?.join(roomId);
+    io.to(uid).emit("matched", { roomId, size });
+  }
+  console.log(`[room] created ${roomId} size=${size} → [${users.join(", ")}]`);
 }
 
 function leaveRoom(socketId) {
@@ -47,54 +46,48 @@ function leaveRoom(socketId) {
   if (!roomId || !rooms[roomId]) return;
 
   const room = rooms[roomId];
-  const partner = room.users.find((id) => id !== socketId);
+  const size = room.size;
+  const partners = room.users.filter((id) => id !== socketId);
 
-  // Notify partner, re-queue them
-  if (partner) {
+  for (const partner of partners) {
     const partnerSocket = io.sockets.sockets.get(partner);
     if (partnerSocket) {
       partnerSocket.leave(roomId);
       delete userRoom[partner];
       io.to(partner).emit("partnerLeft");
-      // Re-queue partner
-      addToQueue(partner);
+      addToQueue(partner, size);
     }
   }
 
-  // Clean up current user
-  const mySocket = io.sockets.sockets.get(socketId);
-  mySocket?.leave(roomId);
+  io.sockets.sockets.get(socketId)?.leave(roomId);
   delete userRoom[socketId];
   delete rooms[roomId];
-
   console.log(`[room] destroyed ${roomId}`);
 }
 
-function addToQueue(socketId) {
-  if (!waitingQueue.includes(socketId)) {
-    waitingQueue.push(socketId);
-    io.to(socketId).emit("waiting");
-    console.log(`[queue] ${socketId} added — queue length: ${waitingQueue.length}`);
-    tryMatch();
-  }
+function addToQueue(socketId, size) {
+  const q = waitingQueues[size];
+  if (!q || q.includes(socketId)) return;
+  q.push(socketId);
+  io.to(socketId).emit("waiting", { size });
+  console.log(`[queue:${size}] ${socketId} added — length: ${q.length}`);
+  tryMatch(size);
 }
 
-function tryMatch() {
-  // Only match if both sockets are still connected
-  while (waitingQueue.length >= 2) {
-    const a = waitingQueue.shift();
-    const b = waitingQueue.shift();
+function tryMatch(size) {
+  const q = waitingQueues[size];
+  while (q.length >= size) {
+    const candidates = q.splice(0, size);
+    const alive = candidates.filter((id) => io.sockets.sockets.has(id));
+    const dead  = candidates.filter((id) => !io.sockets.sockets.has(id));
 
-    const aAlive = io.sockets.sockets.has(a);
-    const bAlive = io.sockets.sockets.has(b);
-
-    if (aAlive && bAlive) {
-      createRoom(a, b);
-      return;
+    if (alive.length === size) {
+      createRoom(alive, size);
+    } else {
+      q.unshift(...alive);
+      if (dead.length) console.log(`[queue:${size}] pruned ${dead.length} dead sockets`);
+      break;
     }
-    // One is dead — put the live one back
-    if (aAlive) waitingQueue.unshift(a);
-    if (bAlive) waitingQueue.unshift(b);
   }
 }
 
@@ -102,44 +95,53 @@ function tryMatch() {
 io.on("connection", (socket) => {
   console.log(`[connect] ${socket.id}`);
 
-  // Immediately try to match the new user
-  addToQueue(socket.id);
+  socket.on("joinQueue", ({ size }) => {
+    const s = [2, 4, 6].includes(Number(size)) ? Number(size) : 2;
+    addToQueue(socket.id, s);
+  });
 
-  // Chat message
   socket.on("message", (text) => {
     if (typeof text !== "string") return;
     const roomId = userRoom[socket.id];
     if (!roomId) return;
-    const clean = text.trim().slice(0, 500); // cap at 500 chars
+    const clean = text.trim().slice(0, 500);
     if (!clean) return;
     socket.to(roomId).emit("message", clean);
   });
 
-  // Skip / next stranger
-  socket.on("skip", () => {
-    leaveRoom(socket.id);
-    addToQueue(socket.id);
+  // Instagram profile share — sanitize then relay as special event
+  socket.on("igShare", (username) => {
+    if (typeof username !== "string") return;
+    const roomId = userRoom[socket.id];
+    if (!roomId) return;
+    const clean = username.trim().replace(/^@/, "").slice(0, 30);
+    if (!/^[a-zA-Z0-9._]{1,30}$/.test(clean)) return;
+    socket.to(roomId).emit("igShare", clean);
   });
 
-  // Clean disconnect
+  socket.on("skip", ({ size } = {}) => {
+    const roomId  = userRoom[socket.id];
+    const roomSize = (roomId && rooms[roomId]?.size) || Number(size) || 2;
+    leaveRoom(socket.id);
+    addToQueue(socket.id, roomSize);
+  });
+
   socket.on("disconnect", () => {
     console.log(`[disconnect] ${socket.id}`);
     leaveRoom(socket.id);
-    removeFromQueue(socket.id);
+    removeFromAllQueues(socket.id);
   });
 });
 
-// ── Stats endpoint (optional) ─────────────────────────────────────────────────
+// ── Stats ─────────────────────────────────────────────────────────────────────
 app.get("/stats", (_req, res) => {
   res.json({
-    online: io.sockets.sockets.size,
-    waiting: waitingQueue.length,
+    online:      io.sockets.sockets.size,
+    waiting:     Object.values(waitingQueues).reduce((a, q) => a + q.length, 0),
     activeRooms: Object.keys(rooms).length,
+    queues:      { duo: waitingQueues[2].length, quad: waitingQueues[4].length, hexa: waitingQueues[6].length },
   });
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀  Strangr running → http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀  Strangr running → http://localhost:${PORT}`));
