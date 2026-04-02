@@ -334,6 +334,11 @@ socket.on("rateLimited", ({ action, retryAfter }) => {
 // SEND TEXT MESSAGE
 // ══════════════════════════════════════════════════════════════════════════════
 function sendMessage() {
+  // If there's a pending image, send that first (regardless of text)
+  if (pendingImg && connected) {
+    sendPendingImage();
+    return;
+  }
   const text = messageInput.value.trim();
   if (!text || !connected) return;
   socket.emit("message", text);
@@ -410,9 +415,7 @@ function showImgPreview(dataUrl) {
   inputArea.insertBefore(wrap, inputArea.firstChild);
 
   document.getElementById("imgPreviewClear").addEventListener("click", () => clearPendingImg(true));
-
-  // Send on next sendMessage OR auto-send immediately — here we auto-send
-  sendPendingImage();
+  // Preview is shown — user taps Send (button or Enter) to actually send it
 }
 
 function sendPendingImage() {
@@ -428,6 +431,34 @@ function clearPendingImg(removePreview = true) {
     document.getElementById("imgPreviewWrap")?.remove();
   }
 }
+
+// ── Paste image support ───────────────────────────────────────────────────────
+// Works when pasting anywhere on the page (Ctrl+V / Cmd+V)
+document.addEventListener("paste", (e) => {
+  if (!connected) return;
+
+  const items = Array.from(e.clipboardData?.items || []);
+  const imageItem = items.find((item) => item.type.startsWith("image/"));
+  if (!imageItem) return; // no image in clipboard — let normal paste proceed
+
+  e.preventDefault(); // stop it from pasting as text
+
+  const file = imageItem.getAsFile();
+  if (!file) return;
+
+  if (file.size > MAX_IMG_BYTES) {
+    showToast("Pasted image too large. Max size is 2 MB.", "error");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    pendingImg = ev.target.result;
+    showImgPreview(pendingImg);
+    showToast("Image ready — press Enter or Send to share.", "success", 2500);
+  };
+  reader.readAsDataURL(file);
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INSTAGRAM FEATURE
