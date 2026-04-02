@@ -3,7 +3,6 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// ── NEW: import rate limiting ─────────────────────────────────────────────────
 const {
   initRedis,
   httpLimiter,
@@ -17,22 +16,21 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
   pingTimeout: 60000,
   pingInterval: 25000,
+  // Raise payload limit to allow image base64 (max ~2.7MB encoded from 2MB raw)
+  maxHttpBufferSize: 3e6,
 });
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ── NEW: init Redis (no-op if REDIS_URL not set — falls back to in-memory) ───
 initRedis();
-
-// ── NEW: block abusive IPs at the socket handshake level ─────────────────────
 io.use(socketConnectionLimiter);
 
-// ── In-memory state (unchanged) ──────────────────────────────────────────────
+// ── In-memory state ──────────────────────────────────────────────────────────
 const waitingQueues = { 2: [], 4: [], 6: [] };
 const rooms    = {};
 const userRoom = {};
 
-// ── Helpers (unchanged) ──────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function generateRoomId() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -46,7 +44,6 @@ function removeFromAllQueues(socketId) {
 function createRoom(users, size) {
   const roomId = generateRoomId();
   rooms[roomId] = { users: [...users], size, createdAt: Date.now() };
-
   for (const uid of users) {
     userRoom[uid] = roomId;
     io.sockets.sockets.get(uid)?.join(roomId);
@@ -58,21 +55,17 @@ function createRoom(users, size) {
 function leaveRoom(socketId) {
   const roomId = userRoom[socketId];
   if (!roomId || !rooms[roomId]) return;
-
   const room = rooms[roomId];
-  const size = room.size;
   const partners = room.users.filter((id) => id !== socketId);
-
   for (const partner of partners) {
-    const partnerSocket = io.sockets.sockets.get(partner);
-    if (partnerSocket) {
-      partnerSocket.leave(roomId);
+    const ps = io.sockets.sockets.get(partner);
+    if (ps) {
+      ps.leave(roomId);
       delete userRoom[partner];
       io.to(partner).emit("partnerLeft");
-      addToQueue(partner, size);
+      addToQueue(partner, room.size);
     }
   }
-
   io.sockets.sockets.get(socketId)?.leave(roomId);
   delete userRoom[socketId];
   delete rooms[roomId];
@@ -94,7 +87,6 @@ function tryMatch(size) {
     const candidates = q.splice(0, size);
     const alive = candidates.filter((id) => io.sockets.sockets.has(id));
     const dead  = candidates.filter((id) => !io.sockets.sockets.has(id));
-
     if (alive.length === size) {
       createRoom(alive, size);
     } else {
@@ -105,11 +97,27 @@ function tryMatch(size) {
   }
 }
 
+// ── Image validation ──────────────────────────────────────────────────────────
+const MAX_IMG_BYTES = 2 * 1024 * 1024; // 2 MB
+const ALLOWED_IMG_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+function validateImageDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string") return false;
+  // Must start with data:image/...;base64,
+  const match = dataUrl.match(/^data:(image\/[a-z]+);base64,/);
+  if (!match) return false;
+  if (!ALLOWED_IMG_TYPES.includes(match[1])) return false;
+  // Check decoded byte size
+  const base64 = dataUrl.split(",")[1];
+  if (!base64) return false;
+  const byteSize = Math.ceil((base64.length * 3) / 4);
+  return byteSize <= MAX_IMG_BYTES;
+}
+
 // ── Socket.IO events ──────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   console.log(`[connect] ${socket.id}`);
 
-  // CHANGED: added rate limit check — 1 line added per handler
   socket.on("joinQueue", async ({ size }) => {
     if (!await socketLimiter("joinQueue", socket)) return;
     const s = [2, 4, 6].includes(Number(size)) ? Number(size) : 2;
@@ -124,6 +132,23 @@ io.on("connection", (socket) => {
     const clean = text.trim().slice(0, 500);
     if (!clean) return;
     socket.to(roomId).emit("message", clean);
+  });
+
+  // ── NEW: image sharing ────────────────────────────────────────────────────
+  socket.on("imageShare", async (dataUrl) => {
+    if (!await socketLimiter("imageShare", socket)) return;
+    const roomId = userRoom[socket.id];
+    if (!roomId) return;
+    if (!validateImageDataUrl(dataUrl)) {
+      socket.emit("rateLimited", {
+        action: "imageShare",
+        retryAfter: 0,
+        message: "Invalid or too-large image. Max 2 MB, JPEG/PNG/GIF/WebP only.",
+      });
+      return;
+    }
+    // Relay the base64 image directly to room partners
+    socket.to(roomId).emit("imageShare", dataUrl);
   });
 
   socket.on("igShare", async (username) => {
@@ -144,7 +169,6 @@ io.on("connection", (socket) => {
     addToQueue(socket.id, roomSize);
   });
 
-  // disconnect is NOT rate-limited — always handle cleanly
   socket.on("disconnect", () => {
     console.log(`[disconnect] ${socket.id}`);
     leaveRoom(socket.id);
@@ -152,7 +176,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ── Stats (unchanged) ─────────────────────────────────────────────────────────
+// ── Stats ─────────────────────────────────────────────────────────────────────
 app.get("/stats", (_req, res) => {
   res.json({
     online:      io.sockets.sockets.size,
@@ -162,14 +186,12 @@ app.get("/stats", (_req, res) => {
   });
 });
 
-// ── NEW: /report endpoint — HTTP, rate limited by IP ─────────────────────────
 app.use(express.json());
 app.post("/report", httpLimiter("report"), (req, res) => {
   const { reportedSocketId, reason } = req.body || {};
   if (!reportedSocketId || typeof reportedSocketId !== "string") {
     return res.status(400).json({ error: "reportedSocketId is required" });
   }
-  // Extend this: save to DB, send to moderation queue, etc.
   console.warn(`[report] socket=${reportedSocketId} reason=${reason || "none"}`);
   res.json({ ok: true, message: "Report received." });
 });
