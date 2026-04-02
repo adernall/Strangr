@@ -3,6 +3,14 @@ const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
 
+// ── NEW: import rate limiting ─────────────────────────────────────────────────
+const {
+  initRedis,
+  httpLimiter,
+  socketLimiter,
+  socketConnectionLimiter,
+} = require("./rateLimit");
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -13,12 +21,18 @@ const io = new Server(server, {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// ── In-memory state ──────────────────────────────────────────────────────────
-const waitingQueues = { 2: [], 4: [], 6: [] };
-const rooms    = {};  // roomId → { users: [], size, createdAt }
-const userRoom = {};  // socketId → roomId
+// ── NEW: init Redis (no-op if REDIS_URL not set — falls back to in-memory) ───
+initRedis();
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── NEW: block abusive IPs at the socket handshake level ─────────────────────
+io.use(socketConnectionLimiter);
+
+// ── In-memory state (unchanged) ──────────────────────────────────────────────
+const waitingQueues = { 2: [], 4: [], 6: [] };
+const rooms    = {};
+const userRoom = {};
+
+// ── Helpers (unchanged) ──────────────────────────────────────────────────────
 function generateRoomId() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -91,16 +105,19 @@ function tryMatch(size) {
   }
 }
 
-// ── Socket.IO events ─────────────────────────────────────────────────────────
+// ── Socket.IO events ──────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   console.log(`[connect] ${socket.id}`);
 
-  socket.on("joinQueue", ({ size }) => {
+  // CHANGED: added rate limit check — 1 line added per handler
+  socket.on("joinQueue", async ({ size }) => {
+    if (!await socketLimiter("joinQueue", socket)) return;
     const s = [2, 4, 6].includes(Number(size)) ? Number(size) : 2;
     addToQueue(socket.id, s);
   });
 
-  socket.on("message", (text) => {
+  socket.on("message", async (text) => {
+    if (!await socketLimiter("message", socket)) return;
     if (typeof text !== "string") return;
     const roomId = userRoom[socket.id];
     if (!roomId) return;
@@ -109,8 +126,8 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("message", clean);
   });
 
-  // Instagram profile share — sanitize then relay as special event
-  socket.on("igShare", (username) => {
+  socket.on("igShare", async (username) => {
+    if (!await socketLimiter("igShare", socket)) return;
     if (typeof username !== "string") return;
     const roomId = userRoom[socket.id];
     if (!roomId) return;
@@ -119,13 +136,15 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("igShare", clean);
   });
 
-  socket.on("skip", ({ size } = {}) => {
-    const roomId  = userRoom[socket.id];
+  socket.on("skip", async ({ size } = {}) => {
+    if (!await socketLimiter("skip", socket)) return;
+    const roomId   = userRoom[socket.id];
     const roomSize = (roomId && rooms[roomId]?.size) || Number(size) || 2;
     leaveRoom(socket.id);
     addToQueue(socket.id, roomSize);
   });
 
+  // disconnect is NOT rate-limited — always handle cleanly
   socket.on("disconnect", () => {
     console.log(`[disconnect] ${socket.id}`);
     leaveRoom(socket.id);
@@ -133,7 +152,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
+// ── Stats (unchanged) ─────────────────────────────────────────────────────────
 app.get("/stats", (_req, res) => {
   res.json({
     online:      io.sockets.sockets.size,
@@ -141,6 +160,18 @@ app.get("/stats", (_req, res) => {
     activeRooms: Object.keys(rooms).length,
     queues:      { duo: waitingQueues[2].length, quad: waitingQueues[4].length, hexa: waitingQueues[6].length },
   });
+});
+
+// ── NEW: /report endpoint — HTTP, rate limited by IP ─────────────────────────
+app.use(express.json());
+app.post("/report", httpLimiter("report"), (req, res) => {
+  const { reportedSocketId, reason } = req.body || {};
+  if (!reportedSocketId || typeof reportedSocketId !== "string") {
+    return res.status(400).json({ error: "reportedSocketId is required" });
+  }
+  // Extend this: save to DB, send to moderation queue, etc.
+  console.warn(`[report] socket=${reportedSocketId} reason=${reason || "none"}`);
+  res.json({ ok: true, message: "Report received." });
 });
 
 const PORT = process.env.PORT || 3000;
