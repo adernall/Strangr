@@ -1,4 +1,4 @@
-/* ── Strangr v5 — client script ─────────────────────────────────────────────── */
+/* ── Strangr. v5 — client script ─────────────────────────────────────────────── */
 "use strict";
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -80,7 +80,7 @@ function showToast(msg, type = "", duration = 3500) {
 // ══════════════════════════════════════════════════════════════════════════════
 // THEME SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
-const THEME_KEY = "strangr_theme";
+const THEME_KEY = "Strangr._theme";
 let currentTheme = localStorage.getItem(THEME_KEY) || "light";
 
 function applyTheme(theme) {
@@ -182,7 +182,7 @@ function notifyUser(title, body) {
       const n = new Notification(title, {
         body,
         icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>",
-        tag: "strangr-match", renotify: true,
+        tag: "Strangr.-match", renotify: true,
       });
       n.onclick = () => { window.focus(); n.close(); };
     } catch { /* ignore */ }
@@ -195,7 +195,7 @@ function notifyUser(title, body) {
 function showHome() {
   homeScreen.classList.remove("hidden");
   chatScreen.classList.add("hidden");
-  document.title = "Strangr — Talk to Strangers Instantly";
+  document.title = "Strangr. — Talk to Strangers Instantly";
 }
 
 function showChat(size, privateMode = false) {
@@ -207,7 +207,7 @@ function showChat(size, privateMode = false) {
 
   homeScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
-  document.title = "Strangr — Chatting…";
+  document.title = "Strangr. — Chatting…";
 
   requestNotifPermission();
   if (!socket.connected) socket.connect();
@@ -488,7 +488,7 @@ socket.on("matched", ({ size, private: priv }) => {
   // Send our nickname to partner after matching
   if (myNickname) socket.emit("myNickname", myNickname);
 
-  notifyUser("Strangr ⚡", priv ? "Your friend joined!" : size > 2 ? `Joined a ${size}-person group!` : "A stranger connected!");
+  notifyUser("Strangr. ⚡", priv ? "Your friend joined!" : size > 2 ? `Joined a ${size}-person group!` : "A stranger connected!");
 });
 
 // Receive partner's nickname
@@ -719,7 +719,7 @@ igModal?.addEventListener("click", (e) => { if (e.target === igModal) closeIgMod
 const LEGAL_CONTENT = {
   guidelines: { html: `
 <h2>Community Guidelines</h2>
-<p>Strangr is built for safe, respectful, and meaningful interactions.</p>
+<p>Strangr. is built for safe, respectful, and meaningful interactions.</p>
 <hr/>
 <h3>1. Respect Others</h3>
 <ul><li>No harassment, bullying, or hate speech</li><li>No threats or intimidation</li></ul>
@@ -759,7 +759,7 @@ const LEGAL_CONTENT = {
   <li>Impersonation or deception</li><li>Spam or exploitation</li>
 </ul>
 <h3>3. Liability</h3>
-<p>Strangr is provided "as is." We are not liable for user behavior or data loss.</p>
+<p>Strangr. is provided "as is." We are not liable for user behavior or data loss.</p>
 <h3>4. Termination</h3>
 <p>We may restrict or ban accounts without notice.</p>` }
 };

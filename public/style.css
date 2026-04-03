@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════
-   STRANGR v5 — STYLESHEET
+   Strangr. v5 — STYLESHEET
    Light default (matches reference image exactly)
    Dark theme via [data-theme="dark"]
    Outfit font · JetBrains Mono for chat
@@ -506,7 +506,7 @@ body {
   max-width: 1140px; margin: 0 auto; padding: 0 28px;
 }
 
-/* WHY STRANGR + HOW IT WORKS — combined card block */
+/* WHY Strangr. + HOW IT WORKS — combined card block */
 .section-why, .section-how {
   background: var(--bg-section2);
   border-top: 1px solid var(--border);

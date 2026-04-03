@@ -1,5 +1,5 @@
 /**
- * rateLimit.js — Strangr rate limiting system
+ * rateLimit.js — Strangr. rate limiting system
  *
  * ARCHITECTURE:
  *   Two backends are supported, chosen automatically at startup:

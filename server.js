@@ -289,4 +289,4 @@ app.post("/report", httpLimiter("report"), (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀  Strangr running → http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🚀  Strangr. running → http://localhost:${PORT}`));

@@ -1,4 +1,4 @@
-# Strangr 🔌
+# Strangr. 🔌
 
 > Real-time anonymous 1-on-1 chat. No accounts. No logs. Just strangers.
 
@@ -24,7 +24,7 @@ Open → http://localhost:3000
 ## Project Structure
 
 ```
-strangr/
+Strangr./
 ├── server.js          ← Express + Socket.IO backend
 ├── package.json
 ├── vercel.json        ← Vercel deployment config
@@ -88,7 +88,7 @@ The `vercel.json` included will work for HTTP long-polling (Socket.IO will fall 
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/strangr.git
+git remote add origin https://github.com/YOUR_USERNAME/Strangr..git
 git push -u origin main
 
 # 2. Go to https://render.com → New → Web Service
@@ -101,7 +101,7 @@ git push -u origin main
 # 5. Click "Deploy" → done!
 ```
 
-Render gives you a URL like `https://strangr.onrender.com`.
+Render gives you a URL like `https://Strangr..onrender.com`.
 
 ### Alternative: Railway
 
