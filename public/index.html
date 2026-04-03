@@ -1,245 +1,473 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Strangr — talk to strangers</title>
+  <title>Strangr — Talk to Strangers Instantly</title>
+  <meta name="description" content="Anonymous real-time chat. No signup, no logs. Connect with a stranger in seconds." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="/favicon.png" type="image/png">
 </head>
 <body>
 
-  <div class="bg-grid" aria-hidden="true"></div>
-  <div class="bg-glow" aria-hidden="true"></div>
+<!-- ══════════════════ TOAST ══════════════════ -->
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
-  <!-- ════════════════════════════════════════════════════
-       TOAST NOTIFICATION
-  ════════════════════════════════════════════════════ -->
-  <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+<!-- ══════════════════ HOME SCREEN ══════════════════ -->
+<div class="screen" id="homeScreen">
 
-  <!-- ════════════════════════════════════════════════════
-       HOME SCREEN
-  ════════════════════════════════════════════════════ -->
-  <div class="screen" id="homeScreen">
-    <div class="home-wrap">
-
-      <div class="live-badge home-badge">
-        <span class="pulse-dot"></span>
-        <span id="onlineCountHome">—</span> online
-      </div>
-
-      <div class="hero-logo">
-        <span class="hero-s">S</span>trangr<span class="hero-dot">.</span>
-      </div>
-      <p class="hero-sub">anonymous · real-time · ephemeral</p>
-
-      <div class="home-actions">
-        <button class="btn-hero btn-start" id="btnStart">
-          <span class="btn-icon">⚡</span>
-          <span>Start Chatting</span>
-          <span class="btn-tag">1 on 1</span>
-        </button>
-
-        <div class="group-wrap">
-          <div class="group-label">Or join a group room —</div>
-          <div class="group-btns">
-            <button class="btn-group" data-size="4">
-              <span class="group-num">4</span>
-              <span class="group-word">people</span>
-            </button>
-            <button class="btn-group" data-size="6">
-              <span class="group-num">6</span>
-              <span class="group-word">people</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <p class="home-note">No sign-up. No logs. Just strangers.</p>
-
-      <!-- ── Bottom-left legal links — subtle, low-key ── -->
-      <div class="home-legal">
-        <button class="legal-link" data-tab="guidelines">Community Guidelines</button>
-        <span class="legal-sep">·</span>
-        <button class="legal-link" data-tab="privacy">Privacy Policy</button>
-        <span class="legal-sep">·</span>
-        <button class="legal-link" data-tab="terms">Terms</button>
-      </div>
-
-    </div>
+  <!-- Topo background lines (decorative SVG) -->
+  <div class="topo-bg" aria-hidden="true">
+    <svg viewBox="0 0 1400 900" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M-100 500 Q200 350 400 450 Q600 550 800 380 Q1000 200 1200 350 Q1400 500 1600 400" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+      <path d="M-100 600 Q150 420 380 520 Q620 640 850 460 Q1050 300 1280 440 Q1450 560 1600 480" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+      <path d="M-100 700 Q200 580 450 640 Q700 700 900 560 Q1100 420 1350 530 Q1520 620 1600 560" stroke="currentColor" stroke-width="0.9" opacity="0.25"/>
+      <path d="M-100 380 Q250 250 500 330 Q720 400 950 280 Q1150 160 1380 270 Q1520 340 1600 300" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+      <path d="M200 -50 Q300 200 250 450 Q200 700 350 900" stroke="currentColor" stroke-width="0.8" opacity="0.15"/>
+      <path d="M500 -50 Q600 180 550 400 Q500 620 680 900" stroke="currentColor" stroke-width="0.7" opacity="0.12"/>
+    </svg>
   </div>
 
-  <!-- ════════════════════════════════════════════════════
-       CHAT SCREEN
-  ════════════════════════════════════════════════════ -->
-  <div class="screen hidden" id="chatScreen">
-    <div class="app">
+  <!-- ── NAV ── -->
+  <nav class="nav" id="mainNav">
+    <div class="nav-inner">
+      <a class="nav-logo" href="#hero">Strangr</a>
 
-      <header class="header">
-        <button class="btn-back" id="btnBack" aria-label="Back to home">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-        <div class="logo">
-          <span class="logo-s">S</span>trangr<span class="logo-dot">.</span>
-        </div>
-        <div class="live-badge">
-          <span class="pulse-dot"></span>
-          <span id="onlineCount">—</span> online
-        </div>
-      </header>
-
-      <main class="chat-wrap">
-
-        <div class="status-bar">
-          <div id="statusDot" class="status-dot waiting"></div>
-          <span id="statusText">Finding strangers…</span>
-          <span id="roomTag" class="room-tag hidden"></span>
-        </div>
-
-        <div class="messages" id="messages" role="log" aria-live="polite">
-          <div class="empty-state" id="emptyState">
-            <div class="empty-icon">⚡</div>
-            <p>You'll be connected to random strangers.<br/>Say hi and be kind.</p>
-          </div>
-        </div>
-
-        <!-- Typing indicator -->
-        <div class="typing-indicator hidden" id="typingIndicator" aria-live="polite">
-          <span class="typing-dots">
-            <span></span><span></span><span></span>
-          </span>
-          <span class="typing-label">Stranger is typing</span>
-        </div>
-
-        <!-- Input area -->
-        <div class="input-area">
-          <div class="input-row">
-            <!-- Hidden file input for images -->
-            <input type="file" id="imageInput" accept="image/*" hidden aria-label="Upload image" />
-            <!-- Image upload button -->
-            <button class="btn btn-img" id="btnImg" disabled title="Send an image" aria-label="Send image">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-            </button>
-            <textarea
-              id="messageInput"
-              class="message-input"
-              placeholder="Type a message…"
-              rows="1"
-              maxlength="500"
-              disabled
-              aria-label="Message"
-            ></textarea>
-            <button id="sendBtn" class="btn btn-send" disabled aria-label="Send">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"></line>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-              </svg>
-            </button>
-          </div>
-
-          <div class="action-row">
-            <span class="char-count" id="charCount">0 / 500</span>
-            <div class="right-actions">
-
-              <!-- Instagram -->
-              <div class="ig-wrap" id="igWrap">
-                <button class="btn btn-ig-add" id="btnIgAdd" title="Share your Instagram" aria-label="Add Instagram">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                </button>
-                <button class="btn btn-ig-share hidden" id="btnIgShare" title="Send your Instagram to stranger" aria-label="Send Instagram">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="url(#igGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <defs>
-                      <linearGradient id="igGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#f9ce34"/>
-                        <stop offset="33%" stop-color="#ee2a7b"/>
-                        <stop offset="100%" stop-color="#6228d7"/>
-                      </linearGradient>
-                    </defs>
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                    <circle cx="12" cy="12" r="4"></circle>
-                    <circle cx="17.5" cy="6.5" r="0.5" fill="url(#igGrad)"></circle>
-                  </svg>
-                </button>
-              </div>
-
-              <button id="skipBtn" class="btn btn-skip">Next stranger →</button>
+      <div class="nav-links" id="navLinks">
+        <a href="#about" class="nav-link">about</a>
+        <span class="nav-sep">|</span>
+        <a href="#how" class="nav-link">how it works</a>
+        <span class="nav-sep">|</span>
+        <a href="#support" class="nav-link">support</a>
+        <span class="nav-sep">|</span>
+        <div class="nav-more-wrap" id="navMoreWrap">
+          <button class="nav-link nav-more-btn" id="btnNavMore" aria-expanded="false">
+            more
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="nav-dropdown hidden" id="navDropdown">
+            <div class="nd-item">
+              <span class="nd-label">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                Theme
+              </span>
+              <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <span class="tt-track">
+                  <span class="tt-thumb"></span>
+                </span>
+                <span class="tt-label" id="themeLabel">Light</span>
+              </button>
             </div>
           </div>
         </div>
-
-      </main>
-
-      <footer class="footer">Anonymous. Ephemeral. No logs, no accounts.</footer>
-    </div>
-  </div>
-
-  <!-- ════════════════════════════════════════════════════
-       INSTAGRAM MODAL
-  ════════════════════════════════════════════════════ -->
-  <div class="modal-overlay hidden" id="igModal" role="dialog" aria-modal="true" aria-labelledby="igModalTitle">
-    <div class="modal">
-      <button class="modal-close" id="igModalClose" aria-label="Close">✕</button>
-      <div class="modal-ig-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#igGrad2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <defs>
-            <linearGradient id="igGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#f9ce34"/>
-              <stop offset="33%" stop-color="#ee2a7b"/>
-              <stop offset="100%" stop-color="#6228d7"/>
-            </linearGradient>
-          </defs>
-          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-          <circle cx="12" cy="12" r="4"></circle>
-          <circle cx="17.5" cy="6.5" r="0.5" fill="#ee2a7b"></circle>
-        </svg>
       </div>
-      <h2 id="igModalTitle" class="modal-title">Your Instagram</h2>
-      <p class="modal-desc">Enter your username. When you tap <strong>Send to Stranger</strong>, they'll see a profile card — not a raw link.</p>
-      <div class="modal-input-wrap">
-        <span class="modal-at">@</span>
-        <input type="text" id="igInput" class="modal-input" placeholder="yourhandle"
-          maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-modal btn-modal-cancel" id="igModalCancel">Cancel</button>
-        <button class="btn-modal btn-modal-save" id="igModalSave">Save &amp; Ready</button>
+
+      <div class="nav-right">
+        <div class="live-pill" id="navLivePill">
+          <span class="live-dot"></span>
+          <span id="onlineCountHome">—</span> online
+        </div>
       </div>
     </div>
-  </div>
+  </nav>
 
-  <!-- ════════════════════════════════════════════════════
-       LEGAL MODAL
-  ════════════════════════════════════════════════════ -->
-  <div class="modal-overlay hidden" id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle">
-    <div class="modal modal-legal">
-      <button class="modal-close" id="legalModalClose" aria-label="Close">✕</button>
+  <!-- ── HERO ── -->
+  <section class="hero" id="hero">
+    <div class="hero-inner">
 
-      <!-- Tab bar -->
-      <div class="legal-tabs" role="tablist">
-        <button class="legal-tab active" data-tab="guidelines" role="tab">Guidelines</button>
-        <button class="legal-tab" data-tab="privacy" role="tab">Privacy</button>
-        <button class="legal-tab" data-tab="terms" role="tab">Terms</button>
+      <!-- LEFT -->
+      <div class="hero-left">
+        <h1 class="hero-title">
+          Connect with a<br/>stranger in seconds.
+        </h1>
+        <p class="hero-sub">
+          Instantly start an anonymous random chat.<br/>
+          <strong>No sign-up required.</strong>
+        </p>
+
+        <!-- Nickname field -->
+        <div class="nickname-row">
+          <input
+            type="text"
+            id="nicknameInput"
+            class="nickname-input"
+            placeholder="Your nickname (optional)"
+            maxlength="20"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="words"
+          />
+        </div>
+
+        <!-- Main CTA -->
+        <button class="btn-cta" id="btnStart">
+          Start Chatting →
+        </button>
+
+        <!-- Group rooms -->
+        <div class="group-row">
+          <span class="gr-label">Group rooms:</span>
+          <button class="btn-group-pill" data-size="4">4 people</button>
+          <button class="btn-group-pill" data-size="6">6 people</button>
+        </div>
+
+        <!-- Private room — "Join with a room code? (Enter here)" style -->
+        <div class="private-inline">
+          Join with a room code?
+          <button class="pr-inline-btn" id="btnShowPrivate">(Enter here)</button>
+        </div>
+
+        <!-- Private room expanded panel (hidden by default) -->
+        <div class="private-panel hidden" id="privatePanel">
+          <div class="pr-row">
+            <input
+              type="text"
+              id="privateCodeInput"
+              class="pr-input"
+              placeholder="e.g. XK9-T3M"
+              maxlength="7"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="characters"
+              spellcheck="false"
+            />
+            <button class="btn-pr-join" id="btnJoinPrivate">Join</button>
+          </div>
+          <button class="btn-pr-create" id="btnCreatePrivate">
+            + Create a new private room
+          </button>
+        </div>
       </div>
 
-      <!-- Content panels -->
-      <div class="legal-body" id="legalBody">
-        <!-- filled by JS -->
+      <!-- RIGHT: Chat preview -->
+      <div class="hero-right">
+        <div class="chat-preview">
+          <div class="cp-header">
+            <div class="cp-status-row">
+              <span class="cp-dot"></span>
+              <span class="cp-status-text">Connected</span>
+            </div>
+            <div class="cp-avatar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+
+          <div class="cp-messages">
+            <div class="cp-msg cp-them">
+              <div class="cp-sender">Stranger <span class="cp-dots">· ·</span></div>
+              <div class="cp-bubble">Hey there!</div>
+            </div>
+            <div class="cp-msg cp-you">
+              <div class="cp-sender">You <span class="cp-dots">· ·</span></div>
+              <div class="cp-bubble">Hello! Nice to meet you.</div>
+            </div>
+            <div class="cp-msg cp-them">
+              <div class="cp-typing-bubble">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="cp-input-bar">
+            <span class="cp-input-fake">Type a message…</span>
+            <div class="cp-send-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Scroll hint -->
+    <div class="hero-scroll-hint">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+  </section>
+
+  <!-- ── WHY STRANGR ── -->
+  <section class="section section-why" id="about">
+    <div class="section-inner">
+      <h2 class="section-heading">Why Strangr?</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <div class="wc-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </div>
+          <h3>Truly Anonymous</h3>
+          <p>No names. No profiles. No identity. Just conversation.</p>
+        </div>
+        <div class="why-card">
+          <div class="wc-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3>Instant Connection</h3>
+          <p>No waiting. No setup. Click and you're talking.</p>
+        </div>
+        <div class="why-card">
+          <div class="wc-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3>Talk to Anyone</h3>
+          <p>Meet strangers from anywhere, anytime.</p>
+        </div>
+        <div class="why-card">
+          <div class="wc-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          </div>
+          <h3>Endless Conversations</h3>
+          <p>Skip, match, repeat — never run out of people.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── HOW IT WORKS ── -->
+  <section class="section section-how" id="how">
+    <div class="section-inner">
+      <div class="how-split">
+        <div class="how-left">
+          <h2 class="section-heading">How it Works</h2>
+          <div class="how-steps">
+            <div class="how-step">
+              <div class="hs-num">1</div>
+              <div class="hs-content">
+                <h3>Match.</h3>
+                <p>Click "Start Chat" and get connected instantly.</p>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="hs-num">2</div>
+              <div class="hs-content">
+                <h3>Chat.</h3>
+                <p>Talk freely with a random stranger — no identity, no limits.</p>
+              </div>
+            </div>
+            <div class="how-step">
+              <div class="hs-num">3</div>
+              <div class="hs-content">
+                <h3>Repeat.</h3>
+                <p>Not feeling it? Skip and connect with someone new in seconds.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="how-icons-col">
+          <div class="how-icon-item">
+            <div class="hi-circle">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </div>
+            <span>1. Match.</span>
+          </div>
+          <div class="how-icon-item">
+            <div class="hi-circle">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <span>2. Chat.</span>
+          </div>
+          <div class="how-icon-item">
+            <div class="hi-circle">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </div>
+            <span>3. Repeat.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ABOUT / SUPPORT ── -->
+  <section class="section section-about" id="support">
+    <div class="section-inner">
+      <div class="about-split">
+        <div class="about-left">
+          <h2 class="section-heading">About Strangr</h2>
+          <p class="about-text">Strangr is built for one simple thing — real conversations without identity.</p>
+          <p class="about-text">No profiles. No pressure. No expectations.</p>
+          <p class="about-text">Just you and a stranger, connected in seconds.</p>
+          <p class="about-text">Because sometimes, it's easier to be real with someone who doesn't know you.</p>
+        </div>
+        <div class="about-right">
+          <h2 class="section-heading">Support</h2>
+          <div class="faq-list">
+            <div class="faq-item">
+              <div class="faq-q">Is Strangr really anonymous?</div>
+              <div class="faq-a">Yes. No names, emails, or identity. Your IP may be used for abuse prevention only.</div>
+            </div>
+            <div class="faq-item">
+              <div class="faq-q">Are chats saved?</div>
+              <div class="faq-a">No. Chats are ephemeral — once you disconnect, they're gone forever.</div>
+            </div>
+            <div class="faq-item">
+              <div class="faq-q">How do private rooms work?</div>
+              <div class="faq-a">Create a room to get a code, share with a friend. They enter the code to join privately.</div>
+            </div>
+          </div>
+          <a href="mailto:support@strangr.app" class="support-email-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            support@strangr.app
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <span class="footer-logo">Strangr</span>
+          <p class="footer-tagline">Anonymous. Ephemeral. Real.</p>
+        </div>
+        <div class="footer-social">
+          <a href="#" class="social-icon" aria-label="Discord" title="Discord">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.033.054a19.908 19.908 0 0 0 5.993 3.03.077.077 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          </a>
+          <a href="#" class="social-icon" aria-label="Instagram" title="Instagram">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div class="footer-legal-links">
+          <button class="legal-link" data-tab="terms">Terms &amp; Conditions</button>
+          <span>·</span>
+          <button class="legal-link" data-tab="privacy">Privacy Policy</button>
+          <span>·</span>
+          <button class="legal-link" data-tab="guidelines">Community Guidelines</button>
+        </div>
+        <p class="footer-copy">© 2026 Strangr</p>
+      </div>
+    </div>
+  </footer>
+
+</div><!-- end homeScreen -->
+
+
+<!-- ══════════════════ CHAT SCREEN ══════════════════ -->
+<div class="screen hidden" id="chatScreen">
+  <div class="chat-app">
+
+    <header class="chat-header">
+      <button class="ch-back" id="btnBack" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="ch-center">
+        <span class="ch-logo">Strangr</span>
+        <span id="roomTag" class="room-tag hidden"></span>
+      </div>
+      <div class="ch-right">
+        <div class="ch-status-wrap">
+          <div id="statusDot" class="status-dot waiting"></div>
+          <span id="statusText" class="ch-status-text">Finding…</span>
+        </div>
+        <div class="live-pill ch-pill">
+          <span class="live-dot"></span>
+          <span id="onlineCount">—</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="chat-main">
+      <div class="messages" id="messages" role="log" aria-live="polite">
+        <div class="empty-state" id="emptyState">
+          <div class="es-icon">⚡</div>
+          <p>Connecting you to a stranger…</p>
+        </div>
+      </div>
+      <div class="typing-indicator hidden" id="typingIndicator" aria-live="polite">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+        <span class="typing-label" id="typingLabel">Stranger is typing</span>
+      </div>
+    </main>
+
+    <div class="chat-input-area">
+      <div id="imgPreviewSlot"></div>
+      <div class="input-row">
+        <input type="file" id="imageInput" accept="image/*" hidden />
+        <button class="ci-btn ci-img" id="btnImg" disabled title="Send image" aria-label="Send image">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+        <textarea id="messageInput" class="message-input" placeholder="Type a message…" rows="1" maxlength="500" disabled aria-label="Message"></textarea>
+        <button id="sendBtn" class="ci-btn ci-send" disabled aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="input-meta">
+        <span class="char-count" id="charCount">0 / 500</span>
+        <div class="input-actions">
+          <button class="ci-btn ci-ig-add" id="btnIgAdd" title="Share Instagram" aria-label="Add Instagram">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="ci-btn ci-ig-share hidden" id="btnIgShare" title="Send Instagram" aria-label="Send Instagram">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#igG)" stroke-width="2" stroke-linecap="round">
+              <defs><linearGradient id="igG" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f9ce34"/><stop offset="33%" stop-color="#ee2a7b"/><stop offset="100%" stop-color="#6228d7"/></linearGradient></defs>
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="url(#igG)"/>
+            </svg>
+          </button>
+          <button id="skipBtn" class="btn-skip">Next stranger →</button>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
+
+<!-- ══════════════════ MODALS ══════════════════ -->
+
+<!-- Private room created -->
+<div class="modal-overlay hidden" id="privateCreatedModal">
+  <div class="modal">
+    <button class="modal-close" id="privateCreatedClose">✕</button>
+    <div class="modal-icon">🔐</div>
+    <h2 class="modal-title">Room Created!</h2>
+    <p class="modal-desc">Share this code with a friend to start a private chat.</p>
+    <div class="private-code-display" id="privateCodeDisplay">—</div>
+    <button class="btn-modal-copy" id="btnCopyCode">Copy Code</button>
+    <p class="modal-note">Expires in 10 minutes.</p>
+  </div>
+</div>
+
+<!-- Instagram -->
+<div class="modal-overlay hidden" id="igModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="modal-close" id="igModalClose">✕</button>
+    <div class="modal-ig-logo">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#igG2)" stroke-width="1.8" stroke-linecap="round">
+        <defs><linearGradient id="igG2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f9ce34"/><stop offset="33%" stop-color="#ee2a7b"/><stop offset="100%" stop-color="#6228d7"/></linearGradient></defs>
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="#ee2a7b" stroke="none"/>
+      </svg>
+    </div>
+    <h2 class="modal-title">Your Instagram</h2>
+    <p class="modal-desc">Enter your handle. Stranger sees a profile card, not a raw link.</p>
+    <div class="modal-input-wrap">
+      <span class="modal-at">@</span>
+      <input type="text" id="igInput" class="modal-input" placeholder="yourhandle" maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal btn-modal-cancel" id="igModalCancel">Cancel</button>
+      <button class="btn-modal btn-modal-save" id="igModalSave">Save &amp; Ready</button>
+    </div>
+  </div>
+</div>
+
+<!-- Legal -->
+<div class="modal-overlay hidden" id="legalModal" role="dialog" aria-modal="true">
+  <div class="modal modal-legal">
+    <button class="modal-close" id="legalModalClose">✕</button>
+    <div class="legal-tabs">
+      <button class="legal-tab active" data-tab="guidelines">Guidelines</button>
+      <button class="legal-tab" data-tab="privacy">Privacy</button>
+      <button class="legal-tab" data-tab="terms">Terms</button>
+    </div>
+    <div class="legal-body" id="legalBody"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
 </body>
 </html>

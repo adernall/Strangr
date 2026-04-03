@@ -16,7 +16,6 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
   pingTimeout: 60000,
   pingInterval: 25000,
-  // Raise payload limit to allow image base64 (max ~2.7MB encoded from 2MB raw)
   maxHttpBufferSize: 3e6,
 });
 
@@ -27,12 +26,24 @@ io.use(socketConnectionLimiter);
 
 // ── In-memory state ──────────────────────────────────────────────────────────
 const waitingQueues = { 2: [], 4: [], 6: [] };
-const rooms    = {};
-const userRoom = {};
+const rooms         = {};   // roomId → { users:[], size, createdAt, private? }
+const userRoom      = {};   // socketId → roomId
+const privateRooms  = {};   // code → { creator: socketId, createdAt }
+const nicknames     = {};   // socketId → nickname string
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function generateRoomId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function generatePrivateCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    if (i === 3) code += "-";
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
 }
 
 function removeFromAllQueues(socketId) {
@@ -41,15 +52,25 @@ function removeFromAllQueues(socketId) {
   }
 }
 
-function createRoom(users, size) {
+function createRoom(users, size, isPrivate = false) {
   const roomId = generateRoomId();
-  rooms[roomId] = { users: [...users], size, createdAt: Date.now() };
+  rooms[roomId] = { users: [...users], size, createdAt: Date.now(), private: isPrivate };
   for (const uid of users) {
     userRoom[uid] = roomId;
     io.sockets.sockets.get(uid)?.join(roomId);
-    io.to(uid).emit("matched", { roomId, size });
+    io.to(uid).emit("matched", { roomId, size, private: isPrivate });
   }
-  console.log(`[room] created ${roomId} size=${size} → [${users.join(", ")}]`);
+  // After matching, relay each user's nickname to their partners
+  for (const uid of users) {
+    const nick = nicknames[uid];
+    if (nick) {
+      const partners = users.filter((id) => id !== uid);
+      for (const partner of partners) {
+        io.to(partner).emit("partnerNickname", nick);
+      }
+    }
+  }
+  console.log(`[room] created ${roomId} size=${size} private=${isPrivate}`);
 }
 
 function leaveRoom(socketId) {
@@ -63,7 +84,7 @@ function leaveRoom(socketId) {
       ps.leave(roomId);
       delete userRoom[partner];
       io.to(partner).emit("partnerLeft");
-      addToQueue(partner, room.size);
+      if (!room.private) addToQueue(partner, room.size);
     }
   }
   io.sockets.sockets.get(socketId)?.leave(roomId);
@@ -77,7 +98,6 @@ function addToQueue(socketId, size) {
   if (!q || q.includes(socketId)) return;
   q.push(socketId);
   io.to(socketId).emit("waiting", { size });
-  console.log(`[queue:${size}] ${socketId} added — length: ${q.length}`);
   tryMatch(size);
 }
 
@@ -98,32 +118,94 @@ function tryMatch(size) {
 }
 
 // ── Image validation ──────────────────────────────────────────────────────────
-const MAX_IMG_BYTES = 2 * 1024 * 1024; // 2 MB
+const MAX_IMG_BYTES    = 2 * 1024 * 1024;
 const ALLOWED_IMG_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 function validateImageDataUrl(dataUrl) {
   if (typeof dataUrl !== "string") return false;
-  // Must start with data:image/...;base64,
   const match = dataUrl.match(/^data:(image\/[a-z]+);base64,/);
   if (!match) return false;
   if (!ALLOWED_IMG_TYPES.includes(match[1])) return false;
-  // Check decoded byte size
   const base64 = dataUrl.split(",")[1];
   if (!base64) return false;
-  const byteSize = Math.ceil((base64.length * 3) / 4);
-  return byteSize <= MAX_IMG_BYTES;
+  return Math.ceil((base64.length * 3) / 4) <= MAX_IMG_BYTES;
 }
 
-// ── Socket.IO events ──────────────────────────────────────────────────────────
+// Cleanup stale private codes after 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, data] of Object.entries(privateRooms)) {
+    if (now - data.createdAt > 10 * 60_000) delete privateRooms[code];
+  }
+}, 60_000);
+
+// ── Socket.IO ────────────────────────────────────────────────────────────────
 io.on("connection", (socket) => {
   console.log(`[connect] ${socket.id}`);
 
+  // ── Queue ──────────────────────────────────────────────────────────────────
   socket.on("joinQueue", async ({ size }) => {
     if (!await socketLimiter("joinQueue", socket)) return;
     const s = [2, 4, 6].includes(Number(size)) ? Number(size) : 2;
     addToQueue(socket.id, s);
   });
 
+  // ── Nickname ────────────────────────────────────────────────────────────────
+  socket.on("myNickname", (name) => {
+    if (typeof name !== "string") return;
+    const clean = name.trim().slice(0, 20);
+    if (!clean) return;
+    nicknames[socket.id] = clean;
+
+    // If already in a room, relay to partners immediately
+    const roomId = userRoom[socket.id];
+    if (roomId && rooms[roomId]) {
+      const partners = rooms[roomId].users.filter((id) => id !== socket.id);
+      for (const partner of partners) {
+        io.to(partner).emit("partnerNickname", clean);
+      }
+    }
+  });
+
+  // ── Private rooms ───────────────────────────────────────────────────────────
+  socket.on("createPrivateRoom", () => {
+    leaveRoom(socket.id);
+    removeFromAllQueues(socket.id);
+
+    // Remove any existing pending code for this socket
+    for (const [code, data] of Object.entries(privateRooms)) {
+      if (data.creator === socket.id) delete privateRooms[code];
+    }
+
+    let code; let tries = 0;
+    do { code = generatePrivateCode(); tries++; }
+    while (privateRooms[code] && tries < 20);
+
+    privateRooms[code] = { creator: socket.id, createdAt: Date.now() };
+    socket.emit("privateRoomCreated", { code });
+    console.log(`[private] code=${code} creator=${socket.id}`);
+  });
+
+  socket.on("joinPrivateRoom", (rawCode) => {
+    if (typeof rawCode !== "string") return;
+    const code = rawCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+    const entry = privateRooms[code];
+
+    if (!entry) { socket.emit("privateRoomError", "Invalid or expired code."); return; }
+    if (entry.creator === socket.id) { socket.emit("privateRoomError", "You created this room — share the code with a friend."); return; }
+    const creator = io.sockets.sockets.get(entry.creator);
+    if (!creator) { delete privateRooms[code]; socket.emit("privateRoomError", "Room creator has disconnected."); return; }
+
+    leaveRoom(socket.id);
+    leaveRoom(entry.creator);
+    removeFromAllQueues(socket.id);
+    removeFromAllQueues(entry.creator);
+    delete privateRooms[code];
+
+    createRoom([entry.creator, socket.id], 2, true);
+  });
+
+  // ── Chat ────────────────────────────────────────────────────────────────────
   socket.on("message", async (text) => {
     if (!await socketLimiter("message", socket)) return;
     if (typeof text !== "string") return;
@@ -134,20 +216,14 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("message", clean);
   });
 
-  // ── NEW: image sharing ────────────────────────────────────────────────────
   socket.on("imageShare", async (dataUrl) => {
     if (!await socketLimiter("imageShare", socket)) return;
     const roomId = userRoom[socket.id];
     if (!roomId) return;
     if (!validateImageDataUrl(dataUrl)) {
-      socket.emit("rateLimited", {
-        action: "imageShare",
-        retryAfter: 0,
-        message: "Invalid or too-large image. Max 2 MB, JPEG/PNG/GIF/WebP only.",
-      });
+      socket.emit("rateLimited", { action: "imageShare", retryAfter: 0, message: "Invalid or too-large image." });
       return;
     }
-    // Relay the base64 image directly to room partners
     socket.to(roomId).emit("imageShare", dataUrl);
   });
 
@@ -161,7 +237,6 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("igShare", clean);
   });
 
-  // Typing indicator — relay to room partners, no rate limiting needed (tiny payload)
   socket.on("typing", (isTyping) => {
     const roomId = userRoom[socket.id];
     if (!roomId) return;
@@ -170,14 +245,24 @@ io.on("connection", (socket) => {
 
   socket.on("skip", async ({ size } = {}) => {
     if (!await socketLimiter("skip", socket)) return;
-    const roomId   = userRoom[socket.id];
-    const roomSize = (roomId && rooms[roomId]?.size) || Number(size) || 2;
+    const roomId  = userRoom[socket.id];
+    const room    = roomId && rooms[roomId];
+    if (room?.private) {
+      leaveRoom(socket.id);
+      socket.emit("backToHome");
+      return;
+    }
+    const roomSize = room?.size || Number(size) || 2;
     leaveRoom(socket.id);
     addToQueue(socket.id, roomSize);
   });
 
   socket.on("disconnect", () => {
     console.log(`[disconnect] ${socket.id}`);
+    for (const [code, data] of Object.entries(privateRooms)) {
+      if (data.creator === socket.id) delete privateRooms[code];
+    }
+    delete nicknames[socket.id];
     leaveRoom(socket.id);
     removeFromAllQueues(socket.id);
   });
