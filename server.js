@@ -161,6 +161,13 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("igShare", clean);
   });
 
+  // Typing indicator — relay to room partners, no rate limiting needed (tiny payload)
+  socket.on("typing", (isTyping) => {
+    const roomId = userRoom[socket.id];
+    if (!roomId) return;
+    socket.to(roomId).emit("typing", !!isTyping);
+  });
+
   socket.on("skip", async ({ size } = {}) => {
     if (!await socketLimiter("skip", socket)) return;
     const roomId   = userRoom[socket.id];

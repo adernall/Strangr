@@ -19,6 +19,7 @@ const skipBtn         = document.getElementById("skipBtn");
 const charCountEl     = document.getElementById("charCount");
 const onlineCount     = document.getElementById("onlineCount");
 const onlineCountHome = document.getElementById("onlineCountHome");
+const typingIndicator = document.getElementById("typingIndicator");
 
 // ── Instagram DOM refs ────────────────────────────────────────────────────────
 const igModal       = document.getElementById("igModal");
@@ -144,8 +145,10 @@ document.querySelectorAll(".btn-group").forEach((btn) => {
 
 btnBack.addEventListener("click", () => {
   if (connected) socket.emit("skip", { size: roomSize });
+  stopTyping();
   socket.disconnect();
   connected = false;
+  showTypingIndicator(false);
   clearMessages();
   clearPendingImg();
   showHome();
@@ -276,6 +279,7 @@ socket.on("connect", () => console.log("[socket] connected:", socket.id));
 socket.on("waiting", ({ size }) => {
   setStatus("waiting", size > 2 ? `Waiting for ${size}-person group…` : "Finding a stranger…");
   setInputEnabled(false);
+  showTypingIndicator(false);
   clearMessages();
   setRoomTag(0);
 });
@@ -306,7 +310,18 @@ socket.on("igShare", (username) => {
   appendMessage("them", username, "igCard");
 });
 
+// ── Typing indicator — receive ────────────────────────────────────────────────
+function showTypingIndicator(show) {
+  typingIndicator.classList.toggle("hidden", !show);
+  if (show) messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+socket.on("typing", (isTyping) => {
+  showTypingIndicator(isTyping);
+});
+
 socket.on("partnerLeft", () => {
+  showTypingIndicator(false);
   setStatus("left", "Stranger disconnected");
   setInputEnabled(false);
   appendMessage("system", "Stranger has left the chat.");
@@ -337,6 +352,7 @@ function sendMessage() {
   // If there's a pending image, send that first (regardless of text)
   if (pendingImg && connected) {
     sendPendingImage();
+    stopTyping();
     return;
   }
   const text = messageInput.value.trim();
@@ -347,23 +363,54 @@ function sendMessage() {
   charCountEl.textContent = "0 / 500";
   charCountEl.classList.remove("warn");
   resizeInput();
+  stopTyping();
+}
+
+function stopTyping() {
+  clearTimeout(typingTimeout);
+  if (isTypingEmitted) {
+    socket.emit("typing", false);
+    isTypingEmitted = false;
+  }
 }
 
 sendBtn.addEventListener("click", sendMessage);
 messageInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
+
+// ── Typing indicator — emit ───────────────────────────────────────────────────
+let typingTimeout = null;
+let isTypingEmitted = false;
+
 messageInput.addEventListener("input", () => {
   resizeInput();
   const len = messageInput.value.length;
   charCountEl.textContent = `${len} / 500`;
   charCountEl.classList.toggle("warn", len > 450);
+
+  if (!connected) return;
+
+  // Emit "started typing" only once per burst
+  if (!isTypingEmitted) {
+    socket.emit("typing", true);
+    isTypingEmitted = true;
+  }
+
+  // Reset the stop-typing timer on every keystroke
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    socket.emit("typing", false);
+    isTypingEmitted = false;
+  }, 1500); // stop indicator 1.5s after last keystroke
 });
 
 skipBtn.addEventListener("click", () => {
   socket.emit("skip", { size: roomSize });
   setStatus("waiting", "Finding a new stranger…");
   setInputEnabled(false);
+  showTypingIndicator(false);
+  stopTyping();
   clearMessages();
   clearPendingImg();
   setRoomTag(0);

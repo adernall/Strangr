@@ -550,6 +550,36 @@ html, body {
   line-height: 1;
 }
 
+/* ── Typing indicator ──────────────────────────────────────────────────────── */
+.typing-indicator {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  font-size: 11px; color: var(--muted);
+  flex-shrink: 0;
+  transition: opacity .2s;
+  height: 28px;
+}
+.typing-indicator.hidden { opacity: 0; pointer-events: none; }
+
+.typing-dots {
+  display: flex; align-items: center; gap: 3px;
+}
+.typing-dots span {
+  display: block;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--muted);
+  animation: typingBounce 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0);   opacity: .4; }
+  30%           { transform: translateY(-4px); opacity: 1;  }
+}
+
+.typing-label { letter-spacing: .03em; }
+
 /* ── Footer ────────────────────────────────────────────────────────────────── */
 .footer {
   text-align: center; font-size: 10px; color: var(--muted);
