@@ -79,6 +79,16 @@ function createRoom(users, size, isPrivate = false) {
       }
     }
   }
+  // Relay each user's persistent userId to their partners so the Report button works
+  for (const uid of users) {
+    const userId = socketUserId[uid];
+    if (userId) {
+      const partners = users.filter((id) => id !== uid);
+      for (const partner of partners) {
+        io.to(partner).emit("partnerUserId", userId);
+      }
+    }
+  }
   console.log(`[room] created ${roomId} size=${size} private=${isPrivate}`);
 }
 
@@ -172,6 +182,24 @@ io.on("connection", (socket) => {
       socket.emit("banned", { banType, retryAfter });
       socket.disconnect(true);
       console.log(`[moderation] ${clean} tried to connect but is ${banType}_banned`);
+      return;
+    }
+
+    // If identify arrives AFTER the room was already created (race condition),
+    // relay this userId to partners now so the Report button still appears
+    const roomId = userRoom[socket.id];
+    if (roomId && rooms[roomId]) {
+      const partners = rooms[roomId].users.filter((id) => id !== socket.id);
+      for (const partner of partners) {
+        io.to(partner).emit("partnerUserId", clean);
+      }
+      // Also receive partners' userIds (in case they identified before us)
+      for (const partner of partners) {
+        const partnerUid = socketUserId[partner];
+        if (partnerUid) {
+          socket.emit("partnerUserId", partnerUid);
+        }
+      }
     }
   });
 
