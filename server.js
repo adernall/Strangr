@@ -10,6 +10,9 @@ const {
   socketConnectionLimiter,
 } = require("./rateLimit");
 
+// ── NEW: moderation module ─────────────────────────────────────────────────────
+const mod = require("./moderation");
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -20,18 +23,25 @@ const io = new Server(server, {
 });
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
 
 initRedis();
 io.use(socketConnectionLimiter);
 
-// ── In-memory state ──────────────────────────────────────────────────────────
-const waitingQueues = { 2: [], 4: [], 6: [] };
-const rooms         = {};   // roomId → { users:[], size, createdAt, private? }
-const userRoom      = {};   // socketId → roomId
-const privateRooms  = {};   // code → { creator: socketId, createdAt }
-const nicknames     = {};   // socketId → nickname string
+// ── NEW: socketId → userId map (userId comes from client localStorage uuid) ───
+const socketUserId = {};
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── NEW: register admin panel routes ──────────────────────────────────────────
+mod.registerAdminRoutes(app, express);
+
+// ── In-memory state (UNCHANGED) ───────────────────────────────────────────────
+const waitingQueues = { 2: [], 4: [], 6: [] };
+const rooms         = {};
+const userRoom      = {};
+const privateRooms  = {};
+const nicknames     = {};
+
+// ── Helpers (ALL UNCHANGED) ───────────────────────────────────────────────────
 function generateRoomId() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -60,7 +70,6 @@ function createRoom(users, size, isPrivate = false) {
     io.sockets.sockets.get(uid)?.join(roomId);
     io.to(uid).emit("matched", { roomId, size, private: isPrivate });
   }
-  // After matching, relay each user's nickname to their partners
   for (const uid of users) {
     const nick = nicknames[uid];
     if (nick) {
@@ -117,8 +126,8 @@ function tryMatch(size) {
   }
 }
 
-// ── Image validation ──────────────────────────────────────────────────────────
-const MAX_IMG_BYTES    = 2 * 1024 * 1024;
+// ── Image validation (UNCHANGED) ──────────────────────────────────────────────
+const MAX_IMG_BYTES     = 2 * 1024 * 1024;
 const ALLOWED_IMG_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 function validateImageDataUrl(dataUrl) {
@@ -131,7 +140,6 @@ function validateImageDataUrl(dataUrl) {
   return Math.ceil((base64.length * 3) / 4) <= MAX_IMG_BYTES;
 }
 
-// Cleanup stale private codes after 10 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [code, data] of Object.entries(privateRooms)) {
@@ -139,25 +147,52 @@ setInterval(() => {
   }
 }, 60_000);
 
-// ── Socket.IO ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SOCKET.IO EVENTS
+// ══════════════════════════════════════════════════════════════════════════════
 io.on("connection", (socket) => {
   console.log(`[connect] ${socket.id}`);
 
-  // ── Queue ──────────────────────────────────────────────────────────────────
+  // ── NEW: identify — client sends its persistent userId from localStorage ──
+  socket.on("identify", (userId) => {
+    if (typeof userId !== "string") return;
+    const clean = userId.replace(/[^a-zA-Z0-9\-]/g, "").slice(0, 64);
+    if (!clean) return;
+
+    socketUserId[socket.id] = clean;
+    mod.touchUser(clean);
+
+    // Kick banned users immediately
+    if (mod.isBanned(clean)) {
+      const u = mod.users[clean];
+      const banType    = u?.status === "perm_banned" ? "perm" : "temp";
+      const retryAfter = banType === "temp" && u?.banUntil
+        ? Math.ceil((u.banUntil - Date.now()) / 1000)
+        : null;
+      socket.emit("banned", { banType, retryAfter });
+      socket.disconnect(true);
+      console.log(`[moderation] ${clean} tried to connect but is ${banType}_banned`);
+    }
+  });
+
+  // ── joinQueue — NEW: ban check added, rest UNCHANGED ──────────────────────
   socket.on("joinQueue", async ({ size }) => {
     if (!await socketLimiter("joinQueue", socket)) return;
+    const uid = socketUserId[socket.id];
+    if (uid && mod.isBanned(uid)) {
+      socket.emit("banned", { banType: mod.users[uid]?.status === "perm_banned" ? "perm" : "temp" });
+      return;
+    }
     const s = [2, 4, 6].includes(Number(size)) ? Number(size) : 2;
     addToQueue(socket.id, s);
   });
 
-  // ── Nickname ────────────────────────────────────────────────────────────────
+  // ── myNickname (UNCHANGED) ─────────────────────────────────────────────────
   socket.on("myNickname", (name) => {
     if (typeof name !== "string") return;
     const clean = name.trim().slice(0, 20);
     if (!clean) return;
     nicknames[socket.id] = clean;
-
-    // If already in a room, relay to partners immediately
     const roomId = userRoom[socket.id];
     if (roomId && rooms[roomId]) {
       const partners = rooms[roomId].users.filter((id) => id !== socket.id);
@@ -167,45 +202,39 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ── Private rooms ───────────────────────────────────────────────────────────
+  // ── createPrivateRoom (UNCHANGED) ─────────────────────────────────────────
   socket.on("createPrivateRoom", () => {
     leaveRoom(socket.id);
     removeFromAllQueues(socket.id);
-
-    // Remove any existing pending code for this socket
     for (const [code, data] of Object.entries(privateRooms)) {
       if (data.creator === socket.id) delete privateRooms[code];
     }
-
     let code; let tries = 0;
     do { code = generatePrivateCode(); tries++; }
     while (privateRooms[code] && tries < 20);
-
     privateRooms[code] = { creator: socket.id, createdAt: Date.now() };
     socket.emit("privateRoomCreated", { code });
     console.log(`[private] code=${code} creator=${socket.id}`);
   });
 
+  // ── joinPrivateRoom (UNCHANGED) ────────────────────────────────────────────
   socket.on("joinPrivateRoom", (rawCode) => {
     if (typeof rawCode !== "string") return;
     const code = rawCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
     const entry = privateRooms[code];
-
     if (!entry) { socket.emit("privateRoomError", "Invalid or expired code."); return; }
     if (entry.creator === socket.id) { socket.emit("privateRoomError", "You created this room — share the code with a friend."); return; }
     const creator = io.sockets.sockets.get(entry.creator);
     if (!creator) { delete privateRooms[code]; socket.emit("privateRoomError", "Room creator has disconnected."); return; }
-
     leaveRoom(socket.id);
     leaveRoom(entry.creator);
     removeFromAllQueues(socket.id);
     removeFromAllQueues(entry.creator);
     delete privateRooms[code];
-
     createRoom([entry.creator, socket.id], 2, true);
   });
 
-  // ── Chat ────────────────────────────────────────────────────────────────────
+  // ── message — NEW: keyword scan + flag added, relay logic UNCHANGED ────────
   socket.on("message", async (text) => {
     if (!await socketLimiter("message", socket)) return;
     if (typeof text !== "string") return;
@@ -213,9 +242,27 @@ io.on("connection", (socket) => {
     if (!roomId) return;
     const clean = text.trim().slice(0, 500);
     if (!clean) return;
+
+    // NEW: keyword scan (non-blocking — never prevents relay)
+    const uid = socketUserId[socket.id];
+    if (uid) {
+      try {
+        const { flagged } = mod.recordMessage(uid, clean);
+        if (flagged) {
+          socket.emit("flagWarning", {
+            message: "Your message was flagged. Repeated violations may result in a ban.",
+          });
+        }
+      } catch (e) {
+        console.error("[moderation] recordMessage error:", e.message);
+      }
+    }
+
+    // Relay — UNCHANGED
     socket.to(roomId).emit("message", clean);
   });
 
+  // ── imageShare (UNCHANGED) ────────────────────────────────────────────────
   socket.on("imageShare", async (dataUrl) => {
     if (!await socketLimiter("imageShare", socket)) return;
     const roomId = userRoom[socket.id];
@@ -227,6 +274,7 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("imageShare", dataUrl);
   });
 
+  // ── igShare (UNCHANGED) ───────────────────────────────────────────────────
   socket.on("igShare", async (username) => {
     if (!await socketLimiter("igShare", socket)) return;
     if (typeof username !== "string") return;
@@ -237,12 +285,14 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("igShare", clean);
   });
 
+  // ── typing (UNCHANGED) ────────────────────────────────────────────────────
   socket.on("typing", (isTyping) => {
     const roomId = userRoom[socket.id];
     if (!roomId) return;
     socket.to(roomId).emit("typing", !!isTyping);
   });
 
+  // ── skip (UNCHANGED) ──────────────────────────────────────────────────────
   socket.on("skip", async ({ size } = {}) => {
     if (!await socketLimiter("skip", socket)) return;
     const roomId  = userRoom[socket.id];
@@ -257,18 +307,46 @@ io.on("connection", (socket) => {
     addToQueue(socket.id, roomSize);
   });
 
+  // ── NEW: reportUser via socket ─────────────────────────────────────────────
+  socket.on("reportUser", ({ targetUserId, reason } = {}) => {
+    if (typeof targetUserId !== "string" || targetUserId.length > 64) return;
+    const VALID  = ["abuse", "spam", "harassment", "sexual_content", "other"];
+    const r      = VALID.includes(reason) ? reason : "other";
+
+    const result = mod.reportUser(targetUserId, r);
+    console.log(`[report] target=${targetUserId} by=${socketUserId[socket.id] || socket.id} reason=${r}`);
+
+    // If auto-banned — disconnect target if online
+    if (result.banned) {
+      for (const [sid, uid] of Object.entries(socketUserId)) {
+        if (uid === targetUserId) {
+          const tSocket = io.sockets.sockets.get(sid);
+          if (tSocket) {
+            tSocket.emit("banned", { banType: result.banType });
+            tSocket.disconnect(true);
+          }
+          break;
+        }
+      }
+    }
+
+    socket.emit("reportAck", { ok: true });
+  });
+
+  // ── disconnect (UNCHANGED + NEW cleanup) ──────────────────────────────────
   socket.on("disconnect", () => {
     console.log(`[disconnect] ${socket.id}`);
     for (const [code, data] of Object.entries(privateRooms)) {
       if (data.creator === socket.id) delete privateRooms[code];
     }
     delete nicknames[socket.id];
+    delete socketUserId[socket.id]; // NEW: clean up userId map
     leaveRoom(socket.id);
     removeFromAllQueues(socket.id);
   });
 });
 
-// ── Stats ─────────────────────────────────────────────────────────────────────
+// ── Stats (UNCHANGED) ─────────────────────────────────────────────────────────
 app.get("/stats", (_req, res) => {
   res.json({
     online:      io.sockets.sockets.size,
@@ -278,15 +356,17 @@ app.get("/stats", (_req, res) => {
   });
 });
 
-app.use(express.json());
+// ── /report HTTP (UNCHANGED endpoint, now wired to moderation module) ─────────
 app.post("/report", httpLimiter("report"), (req, res) => {
   const { reportedSocketId, reason } = req.body || {};
   if (!reportedSocketId || typeof reportedSocketId !== "string") {
     return res.status(400).json({ error: "reportedSocketId is required" });
   }
-  console.warn(`[report] socket=${reportedSocketId} reason=${reason || "none"}`);
-  res.json({ ok: true, message: "Report received." });
+  const targetUserId = socketUserId[reportedSocketId] || reportedSocketId;
+  const result = mod.reportUser(targetUserId, reason || "other");
+  console.warn(`[report/http] socket=${reportedSocketId} userId=${targetUserId} reason=${reason || "none"}`);
+  res.json({ ok: true, message: "Report received.", banned: result.banned });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀  Strangr. running → http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🚀  Strangr running → http://localhost:${PORT}`));

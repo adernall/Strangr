@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════
-   Strangr. v5 — STYLESHEET
+   STRANGR v5 — STYLESHEET
    Light default (matches reference image exactly)
    Dark theme via [data-theme="dark"]
    Outfit font · JetBrains Mono for chat
@@ -506,7 +506,7 @@ body {
   max-width: 1140px; margin: 0 auto; padding: 0 28px;
 }
 
-/* WHY Strangr. + HOW IT WORKS — combined card block */
+/* WHY STRANGR + HOW IT WORKS — combined card block */
 .section-why, .section-how {
   background: var(--bg-section2);
   border-top: 1px solid var(--border);
@@ -1068,3 +1068,37 @@ body {
   .footer-top { flex-direction:column; gap:16px; }
   .footer-bottom { flex-direction:column; align-items:flex-start; }
 }
+
+/* ── Report button ─────────────────────────────────────────── */
+.btn-report {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent;
+  border: 1.5px solid rgba(239,68,68,.35);
+  color: var(--danger);
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+  padding: 6px 12px; border-radius: var(--r-sm);
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.btn-report:hover { background: rgba(239,68,68,.08); border-color: var(--danger); }
+.btn-report.hidden { display: none; }
+
+/* ── Report modal reasons ──────────────────────────────────── */
+.report-reasons {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.report-reason-btn {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 13px 16px;
+  background: var(--bg-section); border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm); color: var(--text);
+  font-family: var(--font-ui); font-size: 14px; font-weight: 500;
+  cursor: pointer; text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.report-reason-btn:hover {
+  border-color: var(--danger);
+  background: rgba(239,68,68,.06);
+  color: var(--danger);
+}
+.report-reason-btn:active { transform: scale(.98); }
+.rr-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }

@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Strangr Admin</title>
+<style>
+/* ── Reset ─────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5}
+button{cursor:pointer;font-family:inherit;font-size:13px;border:none;border-radius:6px;padding:6px 14px;transition:opacity .15s,filter .15s}
+button:hover{filter:brightness(1.1)}
+button:active{opacity:.8}
+input{font-family:inherit;font-size:14px}
+
+/* ── Variables ─────────────────────────────────────────────── */
+:root{
+  --bg:#0f1117;
+  --surface:#1a1d2e;
+  --surface2:#232637;
+  --border:#2e3250;
+  --text:#e2e8f0;
+  --text2:#94a3b8;
+  --text3:#64748b;
+  --cyan:#06d6f5;
+  --purple:#7c5cfc;
+  --success:#10b981;
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --r:10px;
+}
+
+body{background:var(--bg);color:var(--text)}
+
+/* ── Login screen ──────────────────────────────────────────── */
+#loginScreen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px;
+}
+.login-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:40px 36px;width:100%;max-width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.login-logo{
+  font-size:22px;font-weight:800;color:var(--text);
+  text-align:center;margin-bottom:6px;letter-spacing:-.3px;
+}
+.login-sub{text-align:center;color:var(--text3);font-size:13px;margin-bottom:30px}
+.login-box label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+.login-box input{
+  width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:11px 14px;border-radius:8px;outline:none;
+  transition:border-color .2s;margin-bottom:16px;
+}
+.login-box input:focus{border-color:var(--cyan)}
+.btn-login{
+  width:100%;padding:12px;background:var(--cyan);color:#000;
+  font-weight:800;font-size:15px;border-radius:8px;
+}
+.login-err{color:var(--danger);font-size:13px;text-align:center;margin-top:12px;min-height:18px}
+
+/* ── Admin layout ──────────────────────────────────────────── */
+#adminScreen{display:none;flex-direction:column;min-height:100vh}
+.admin-header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:10;
+}
+.ah-title{font-size:18px;font-weight:800;color:var(--text);margin-right:auto}
+.ah-title span{color:var(--cyan)}
+
+.stat-chips{display:flex;gap:10px;flex-wrap:wrap}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:999px;padding:4px 12px;font-size:12px;color:var(--text2);
+}
+.chip-dot{width:7px;height:7px;border-radius:50%;background:var(--success)}
+.chip-dot.warn{background:var(--warn)}
+.chip-dot.danger{background:var(--danger)}
+
+.btn-logout{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-reload{background:var(--purple);color:#fff}
+
+/* ── Main content ──────────────────────────────────────────── */
+.admin-body{flex:1;padding:20px 24px;max-width:1400px;margin:0 auto;width:100%}
+
+/* ── Filters ───────────────────────────────────────────────── */
+.filter-bar{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.filter-bar input{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:8px 14px;border-radius:8px;outline:none;
+  flex:1;min-width:200px;max-width:320px;
+}
+.filter-bar input:focus{border-color:var(--cyan)}
+.filter-bar select{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:8px 12px;border-radius:8px;outline:none;
+  cursor:pointer;
+}
+.filter-count{font-size:13px;color:var(--text3);margin-left:auto}
+
+/* ── Table ─────────────────────────────────────────────────── */
+.table-wrap{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+}
+table{width:100%;border-collapse:collapse}
+th{
+  background:var(--surface2);text-align:left;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  color:var(--text);vertical-align:middle;
+  font-size:13px;
+}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* User ID cell */
+.uid-cell{font-family:monospace;font-size:11px;color:var(--text2);word-break:break-all;max-width:160px}
+.uid-short{display:block}
+
+/* Status badges */
+.badge{
+  display:inline-block;font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:999px;letter-spacing:.04em;text-transform:uppercase;
+}
+.badge-active{background:rgba(16,185,129,.15);color:var(--success);border:1px solid rgba(16,185,129,.3)}
+.badge-temp{background:rgba(245,158,11,.15);color:var(--warn);border:1px solid rgba(245,158,11,.3)}
+.badge-perm{background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+
+/* Number cells */
+.num-cell{text-align:center;font-weight:600}
+.num-red{color:var(--danger)}
+.num-warn{color:var(--warn)}
+.num-ok{color:var(--text3)}
+
+/* Action buttons */
+.actions-cell{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.btn-temp-ban{background:rgba(245,158,11,.2);color:var(--warn);border:1px solid rgba(245,158,11,.3)}
+.btn-perm-ban{background:rgba(239,68,68,.2);color:var(--danger);border:1px solid rgba(239,68,68,.3)}
+.btn-unban{background:rgba(16,185,129,.2);color:var(--success);border:1px solid rgba(16,185,129,.3)}
+.btn-detail{background:var(--surface2);color:var(--text2);border:1px solid var(--border);font-size:11px}
+
+/* Ban-until cell */
+.ban-until{font-size:11px;color:var(--warn)}
+.last-active{font-size:11px;color:var(--text3)}
+
+/* ── Detail modal ──────────────────────────────────────────── */
+.modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.hidden{display:none}
+.modal-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:28px 24px;width:100%;max-width:620px;
+  max-height:80vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-header h3{font-size:17px;font-weight:700;color:var(--text)}
+.btn-modal-close{background:var(--surface2);color:var(--text2);width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
+
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;flex-shrink:0}
+.detail-item label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.detail-item .val{font-size:14px;font-weight:600;color:var(--text)}
+
+.msgs-heading{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:10px;flex-shrink:0}
+.msgs-list{
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;
+  padding-right:4px;
+}
+.msgs-list::-webkit-scrollbar{width:4px}
+.msgs-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px}
+
+.msg-row{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;padding:8px 12px;font-size:13px;
+}
+.msg-row .msg-text{color:var(--text);margin-bottom:2px;word-break:break-word}
+.msg-row .msg-time{font-size:11px;color:var(--text3);font-family:monospace}
+.no-msgs{color:var(--text3);font-size:13px;font-style:italic}
+
+/* ── Toast ─────────────────────────────────────────────────── */
+.a-toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-size:13px;padding:9px 20px;border-radius:999px;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s;
+  opacity:0;pointer-events:none;z-index:999;
+}
+.a-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.a-toast.ok{border-color:rgba(16,185,129,.4);color:var(--success)}
+.a-toast.err{border-color:rgba(239,68,68,.4);color:var(--danger)}
+.a-toast.warn{border-color:rgba(245,158,11,.4);color:var(--warn)}
+
+/* ── Empty state ───────────────────────────────────────────── */
+.empty-row td{text-align:center;color:var(--text3);padding:40px;font-style:italic}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media(max-width:700px){
+  .admin-body{padding:12px}
+  .admin-header{padding:12px}
+  th:nth-child(n+5),td:nth-child(n+5){display:none}
+  .detail-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">Strangr <span style="color:#ef4444">Admin</span></div>
+    <p class="login-sub">Restricted access — authorised personnel only</p>
+    <label for="adminPass">Password</label>
+    <input type="password" id="adminPass" placeholder="Enter admin password" autocomplete="current-password"/>
+    <button class="btn-login" id="btnLogin">Sign In</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ── Admin screen ── -->
+<div id="adminScreen">
+  <header class="admin-header">
+    <div class="ah-title"><span>Strangr</span> Admin</div>
+    <div class="stat-chips" id="statChips">
+      <div class="chip"><span class="chip-dot"></span> — online</div>
+    </div>
+    <button class="btn-reload" id="btnReload">↻ Refresh</button>
+    <button class="btn-logout" id="btnLogout">Sign Out</button>
+  </header>
+
+  <div class="admin-body">
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <input type="search" id="searchInput" placeholder="Search user ID…"/>
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="temp_banned">Temp Banned</option>
+        <option value="perm_banned">Perm Banned</option>
+      </select>
+      <span class="filter-count" id="filterCount"></span>
+    </div>
+
+    <!-- Users table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User ID</th>
+            <th>Status</th>
+            <th style="text-align:center">Reports</th>
+            <th style="text-align:center">Flags</th>
+            <th style="text-align:center">Temp Bans</th>
+            <th>Last Active</th>
+            <th>Ban Until</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody">
+          <tr class="empty-row"><td colspan="8">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Detail modal ── -->
+<div class="modal-overlay hidden" id="detailModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="detailTitle">User Detail</h3>
+      <button class="btn-modal-close" id="btnCloseDetail">✕</button>
+    </div>
+    <div class="detail-grid" id="detailGrid"></div>
+    <div class="msgs-heading">Last Messages (<span id="msgCount">0</span>)</div>
+    <div class="msgs-list" id="msgList"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="a-toast" id="aToast"></div>
+
+<script>
+"use strict";
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = "";   // same origin
+let token = sessionStorage.getItem("strangr_admin_token") || "";
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+const toastEl = document.getElementById("aToast");
+let toastTimer;
+function toast(msg, type = "") {
+  toastEl.textContent = msg;
+  toastEl.className   = `a-toast show${type ? " " + type : ""}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.className = "a-toast"; }, 3000);
+}
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  try {
+    const res = await fetch(API + "/admin-secret" + path, {
+      method,
+      headers: {
+        "Content-Type":  "application/json",
+        "x-admin-token": token,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (res.status === 401) {
+      handleLogout();
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    toast("Network error: " + e.message, "err");
+    return null;
+  }
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+const loginScreen = document.getElementById("loginScreen");
+const adminScreen = document.getElementById("adminScreen");
+const loginErr    = document.getElementById("loginErr");
+const adminPassEl = document.getElementById("adminPass");
+const btnLogin    = document.getElementById("btnLogin");
+
+async function doLogin() {
+  const password = adminPassEl.value;
+  if (!password) { loginErr.textContent = "Enter password."; return; }
+  loginErr.textContent = "";
+  btnLogin.disabled = true; btnLogin.textContent = "Signing in…";
+  try {
+    const res = await fetch(API + "/admin-secret/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      loginErr.textContent = data.error || "Wrong password.";
+    } else {
+      token = data.token;
+      sessionStorage.setItem("strangr_admin_token", token);
+      showAdmin();
+    }
+  } catch (e) {
+    loginErr.textContent = "Connection error.";
+  } finally {
+    btnLogin.disabled = false; btnLogin.textContent = "Sign In";
+  }
+}
+
+btnLogin.addEventListener("click", doLogin);
+adminPassEl.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+// ── Auto-login if token in sessionStorage ─────────────────────────────────────
+async function tryAutoLogin() {
+  if (!token) return;
+  const data = await api("GET", "/stats");
+  if (data) showAdmin();
+  else token = "";
+}
+tryAutoLogin();
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+document.getElementById("btnLogout").addEventListener("click", async () => {
+  await api("POST", "/logout");
+  handleLogout();
+});
+function handleLogout() {
+  token = "";
+  sessionStorage.removeItem("strangr_admin_token");
+  loginScreen.style.display = "flex";
+  adminScreen.style.display = "none";
+  adminPassEl.value = "";
+}
+
+// ── Show admin UI ─────────────────────────────────────────────────────────────
+function showAdmin() {
+  loginScreen.style.display = "none";
+  adminScreen.style.display = "flex";
+  loadStats();
+  loadUsers();
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  const data = await api("GET", "/stats");
+  if (!data) return;
+  const chips = document.getElementById("statChips");
+  chips.innerHTML = `
+    <div class="chip"><span class="chip-dot"></span>${data.total} total users</div>
+    <div class="chip"><span class="chip-dot"></span>${data.active} active</div>
+    ${data.tempBanned ? `<div class="chip"><span class="chip-dot warn"></span>${data.tempBanned} temp banned</div>` : ""}
+    ${data.permBanned ? `<div class="chip"><span class="chip-dot danger"></span>${data.permBanned} perm banned</div>` : ""}
+    <div class="chip">🚩 ${data.totalFlags} flags</div>
+    <div class="chip">📣 ${data.totalReports} reports</div>
+  `;
+}
+
+// ── Users table ───────────────────────────────────────────────────────────────
+let allUsers = [];
+
+async function loadUsers() {
+  const data = await api("GET", "/users");
+  if (!data) return;
+  allUsers = data;
+  renderTable();
+}
+
+document.getElementById("btnReload").addEventListener("click", () => { loadStats(); loadUsers(); });
+document.getElementById("searchInput").addEventListener("input", renderTable);
+document.getElementById("statusFilter").addEventListener("change", renderTable);
+
+function renderTable() {
+  const search    = document.getElementById("searchInput").value.toLowerCase();
+  const statusF   = document.getElementById("statusFilter").value;
+  const tbody     = document.getElementById("usersBody");
+  const countEl   = document.getElementById("filterCount");
+
+  let filtered = allUsers.filter(u => {
+    if (search && !u.userId.toLowerCase().includes(search)) return false;
+    if (statusF && u.status !== statusF) return false;
+    return true;
+  });
+
+  countEl.textContent = `${filtered.length} of ${allUsers.length} users`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No users found</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(u => {
+    const shortId   = u.userId.slice(0, 8) + "…";
+    const statusBadge = {
+      active:      `<span class="badge badge-active">active</span>`,
+      temp_banned: `<span class="badge badge-temp">temp ban</span>`,
+      perm_banned: `<span class="badge badge-perm">perm ban</span>`,
+    }[u.status] || u.status;
+
+    const banUntil = u.banUntil
+      ? `<div class="ban-until">${fmtRelative(u.banUntil)}</div>`
+      : `<span style="color:var(--text3)">—</span>`;
+
+    const lastActive = u.lastActive
+      ? `<div class="last-active">${fmtRelative(u.lastActive)}</div>`
+      : "—";
+
+    const repClass  = u.reports >= 5 ? "num-red" : u.reports >= 2 ? "num-warn" : "num-ok";
+    const flagClass = u.flags   >= 3 ? "num-red" : u.flags   >= 1 ? "num-warn" : "num-ok";
+
+    const actions = [];
+    if (u.status !== "perm_banned") {
+      actions.push(`<button class="btn-temp-ban" onclick="tempBan('${u.userId}')">Temp Ban</button>`);
+      actions.push(`<button class="btn-perm-ban" onclick="permBan('${u.userId}')">Perm Ban</button>`);
+    }
+    if (u.status !== "active") {
+      actions.push(`<button class="btn-unban" onclick="unban('${u.userId}')">Unban</button>`);
+    }
+    actions.push(`<button class="btn-detail" onclick="showDetail('${u.userId}')">Detail</button>`);
+
+    return `<tr>
+      <td class="uid-cell" title="${u.userId}"><span class="uid-short">${shortId}</span></td>
+      <td>${statusBadge}</td>
+      <td class="num-cell ${repClass}">${u.reports}</td>
+      <td class="num-cell ${flagClass}">${u.flags}</td>
+      <td class="num-cell">${u.tempBans}</td>
+      <td>${lastActive}</td>
+      <td>${banUntil}</td>
+      <td><div class="actions-cell">${actions.join("")}</div></td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Ban / unban actions ───────────────────────────────────────────────────────
+async function tempBan(userId) {
+  if (!confirm(`Temp ban user\n${userId}?`)) return;
+  const data = await api("POST", "/ban/temp", { userId });
+  if (!data) return;
+  toast(`Temp banned: ${userId.slice(0, 8)}…`, "warn");
+  updateUserInList(userId, data.user);
+}
+
+async function permBan(userId) {
+  if (!confirm(`⚠️ PERMANENTLY ban user\n${userId}?\n\nThis cannot be reversed automatically.`)) return;
+  const data = await api("POST", "/ban/perm", { userId });
+  if (!data) return;
+  toast(`Permanently banned: ${userId.slice(0, 8)}…`, "err");
+  updateUserInList(userId, data.user);
+}
+
+async function unban(userId) {
+  if (!confirm(`Unban user\n${userId}?`)) return;
+  const data = await api("POST", "/unban", { userId });
+  if (!data) return;
+  toast(`Unbanned: ${userId.slice(0, 8)}…`, "ok");
+  updateUserInList(userId, data.user);
+}
+
+function updateUserInList(userId, updatedUser) {
+  if (!updatedUser) { loadUsers(); return; }
+  const idx = allUsers.findIndex(u => u.userId === userId);
+  if (idx !== -1) {
+    allUsers[idx] = { userId, ...updatedUser, msgCount: (updatedUser.lastMessages || []).length };
+  }
+  renderTable();
+  loadStats();
+}
+
+// ── User detail modal ─────────────────────────────────────────────────────────
+const detailModal = document.getElementById("detailModal");
+document.getElementById("btnCloseDetail").addEventListener("click", () => {
+  detailModal.classList.add("hidden");
+});
+detailModal.addEventListener("click", e => {
+  if (e.target === detailModal) detailModal.classList.add("hidden");
+});
+
+async function showDetail(userId) {
+  const data = await api("GET", `/users/${encodeURIComponent(userId)}`);
+  if (!data || data.error) { toast("User not found", "err"); return; }
+
+  document.getElementById("detailTitle").textContent = `User: ${userId.slice(0, 12)}…`;
+
+  document.getElementById("detailGrid").innerHTML = `
+    <div class="detail-item"><label>User ID</label><div class="val" style="font-size:11px;font-family:monospace;word-break:break-all">${data.userId}</div></div>
+    <div class="detail-item"><label>Status</label><div class="val">${data.status}</div></div>
+    <div class="detail-item"><label>Reports</label><div class="val" style="color:var(--danger)">${data.reports || 0}</div></div>
+    <div class="detail-item"><label>Keyword Flags</label><div class="val" style="color:var(--warn)">${data.flags || 0}</div></div>
+    <div class="detail-item"><label>Temp Bans</label><div class="val">${data.tempBans || 0}</div></div>
+    <div class="detail-item"><label>Last Active</label><div class="val">${data.lastActive ? new Date(data.lastActive).toLocaleString() : "—"}</div></div>
+    <div class="detail-item"><label>Ban Until</label><div class="val">${data.banUntil ? new Date(data.banUntil).toLocaleString() : "—"}</div></div>
+    <div class="detail-item"><label>Report Reasons</label><div class="val" style="font-size:12px">${(data.reports_detail || []).slice(-5).map(r => r.reason).join(", ") || "—"}</div></div>
+  `;
+
+  const msgs     = data.lastMessages || [];
+  const msgCount = document.getElementById("msgCount");
+  const msgList  = document.getElementById("msgList");
+  msgCount.textContent = msgs.length;
+
+  if (!msgs.length) {
+    msgList.innerHTML = `<div class="no-msgs">No messages recorded yet.</div>`;
+  } else {
+    msgList.innerHTML = [...msgs].reverse().map(m => `
+      <div class="msg-row">
+        <div class="msg-text">${escHtml(m.text)}</div>
+        <div class="msg-time">${new Date(m.at).toLocaleString()}</div>
+      </div>
+    `).join("");
+  }
+
+  detailModal.classList.remove("hidden");
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtRelative(ts) {
+  if (!ts) return "—";
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec <    60) return `${sec}s ago`;
+  if (sec <  3600) return `${Math.floor(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+// Auto-refresh every 30s if admin is logged in
+setInterval(() => {
+  if (token && adminScreen.style.display !== "none") {
+    loadStats();
+    loadUsers();
+  }
+}, 30_000);
+</script>
+</body>
+</html>

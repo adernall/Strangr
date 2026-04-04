@@ -1,4 +1,4 @@
-/* ── Strangr. v5 — client script ─────────────────────────────────────────────── */
+/* ── Strangr v5 — client script ─────────────────────────────────────────────── */
 "use strict";
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -80,7 +80,7 @@ function showToast(msg, type = "", duration = 3500) {
 // ══════════════════════════════════════════════════════════════════════════════
 // THEME SYSTEM
 // ══════════════════════════════════════════════════════════════════════════════
-const THEME_KEY = "Strangr._theme";
+const THEME_KEY = "strangr_theme";
 let currentTheme = localStorage.getItem(THEME_KEY) || "light";
 
 function applyTheme(theme) {
@@ -141,6 +141,18 @@ let pendingImg    = null;
 let myNickname      = "";  // set from input
 let partnerNickname = "";  // received from partner via socket
 
+// ── userId — persistent anonymous ID ─────────────────────────────────────────
+// Generated once, stored in localStorage, survives page reloads/nickname changes
+const USER_ID_KEY = "strangr_user_id";
+let myUserId = localStorage.getItem(USER_ID_KEY);
+if (!myUserId) {
+  myUserId = crypto.randomUUID();
+  localStorage.setItem(USER_ID_KEY, myUserId);
+}
+
+// Track partner's userId so we can report them
+let partnerUserId = "";
+
 // ══════════════════════════════════════════════════════════════════════════════
 // SOCKET
 // ══════════════════════════════════════════════════════════════════════════════
@@ -182,7 +194,7 @@ function notifyUser(title, body) {
       const n = new Notification(title, {
         body,
         icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>",
-        tag: "Strangr.-match", renotify: true,
+        tag: "strangr-match", renotify: true,
       });
       n.onclick = () => { window.focus(); n.close(); };
     } catch { /* ignore */ }
@@ -195,7 +207,7 @@ function notifyUser(title, body) {
 function showHome() {
   homeScreen.classList.remove("hidden");
   chatScreen.classList.add("hidden");
-  document.title = "Strangr. — Talk to Strangers Instantly";
+  document.title = "Strangr — Talk to Strangers Instantly";
 }
 
 function showChat(size, privateMode = false) {
@@ -207,7 +219,7 @@ function showChat(size, privateMode = false) {
 
   homeScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
-  document.title = "Strangr. — Chatting…";
+  document.title = "Strangr — Chatting…";
 
   requestNotifPermission();
   if (!socket.connected) socket.connect();
@@ -232,12 +244,14 @@ btnBack?.addEventListener("click", () => {
   if (connected) socket.emit("skip", { size: roomSize });
   stopTyping();
   socket.disconnect();
-  connected = false;
-  isPrivateRoom = false;
+  connected       = false;
+  isPrivateRoom   = false;
   partnerNickname = "";
+  partnerUserId   = "";   // NEW
   showTypingIndicator(false);
   clearMessages();
   clearPendingImg();
+  hideReportBtn(); // NEW
   showHome();
 });
 
@@ -453,7 +467,11 @@ setInterval(fetchStats, 10_000);
 // ══════════════════════════════════════════════════════════════════════════════
 // SOCKET EVENTS
 // ══════════════════════════════════════════════════════════════════════════════
-socket.on("connect", () => console.log("[socket] connected:", socket.id));
+socket.on("connect", () => {
+  console.log("[socket] connected:", socket.id);
+  // NEW: identify ourselves to the server with our persistent userId
+  socket.emit("identify", myUserId);
+});
 
 socket.on("waiting", ({ size }) => {
   setStatus("waiting", size > 2 ? `Waiting for ${size}-person group…` : "Finding a stranger…");
@@ -462,6 +480,7 @@ socket.on("waiting", ({ size }) => {
   clearMessages();
   setRoomTag(0);
   partnerNickname = "";
+  partnerUserId   = "";   // NEW: reset partner tracking
 });
 
 socket.on("matched", ({ size, private: priv }) => {
@@ -488,7 +507,7 @@ socket.on("matched", ({ size, private: priv }) => {
   // Send our nickname to partner after matching
   if (myNickname) socket.emit("myNickname", myNickname);
 
-  notifyUser("Strangr. ⚡", priv ? "Your friend joined!" : size > 2 ? `Joined a ${size}-person group!` : "A stranger connected!");
+  notifyUser("Strangr ⚡", priv ? "Your friend joined!" : size > 2 ? `Joined a ${size}-person group!` : "A stranger connected!");
 });
 
 // Receive partner's nickname
@@ -520,8 +539,43 @@ socket.on("partnerLeft", () => {
   setStatus("left", `${who} disconnected`);
   setInputEnabled(false);
   appendMessage("system", `${who} has left the chat.`);
-  isPrivateRoom = false;
+  isPrivateRoom   = false;
   partnerNickname = "";
+  partnerUserId   = "";   // NEW
+  hideReportBtn();         // NEW
+});
+
+// NEW: banned — server kicked us (we are banned)
+socket.on("banned", ({ banType, retryAfter }) => {
+  connected = false;
+  setInputEnabled(false);
+  const msg = banType === "perm"
+    ? "You have been permanently banned from Strangr."
+    : `You have been temporarily banned.${retryAfter ? ` Try again in ${Math.ceil(retryAfter / 60)} minute(s).` : ""}`;
+  showToast(msg, "error", 8000);
+  appendMessage("system", `⛔ ${msg}`);
+  setTimeout(() => {
+    socket.disconnect();
+    showHome();
+  }, 4000);
+});
+
+// NEW: flagWarning — our message was flagged (keywords)
+socket.on("flagWarning", ({ message }) => {
+  showToast(message, "warn", 5000);
+});
+
+// NEW: receive partner's userId (relayed by server on match)
+socket.on("partnerUserId", (uid) => {
+  if (typeof uid === "string" && uid.trim()) {
+    partnerUserId = uid.trim();
+    showReportBtn(); // show report button now that we have a target
+  }
+});
+
+// NEW: report acknowledged
+socket.on("reportAck", () => {
+  showToast("Report submitted. Thank you.", "success");
 });
 
 socket.on("disconnect", () => {
@@ -592,6 +646,40 @@ messageInput?.addEventListener("input", () => {
   }, 1500);
 });
 
+// ── Report button visibility ───────────────────────────────────────────────────
+function showReportBtn() {
+  const btn = document.getElementById("btnReport");
+  if (btn) btn.classList.remove("hidden");
+}
+function hideReportBtn() {
+  const btn = document.getElementById("btnReport");
+  if (btn) btn.classList.add("hidden");
+}
+
+// Report modal
+const reportModal   = document.getElementById("reportModal");
+const btnReport     = document.getElementById("btnReport");
+const btnCloseReport = document.getElementById("btnCloseReport");
+
+btnReport?.addEventListener("click", () => {
+  if (!partnerUserId) { showToast("No one to report right now.", "warn"); return; }
+  reportModal?.classList.remove("hidden");
+});
+
+btnCloseReport?.addEventListener("click", () => reportModal?.classList.add("hidden"));
+reportModal?.addEventListener("click", e => { if (e.target === reportModal) reportModal.classList.add("hidden"); });
+
+document.querySelectorAll(".report-reason-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const reason = btn.dataset.reason;
+    if (!partnerUserId) return;
+    socket.emit("reportUser", { targetUserId: partnerUserId, reason });
+    reportModal?.classList.add("hidden");
+    // Prevent double-reporting same session
+    hideReportBtn();
+  });
+});
+
 skipBtn?.addEventListener("click", () => {
   socket.emit("skip", { size: roomSize });
   setStatus("waiting", isPrivateRoom ? "Returning…" : "Finding new stranger…");
@@ -602,6 +690,8 @@ skipBtn?.addEventListener("click", () => {
   clearPendingImg();
   setRoomTag(0);
   partnerNickname = "";
+  partnerUserId   = "";   // NEW
+  hideReportBtn();         // NEW
 
   if (isPrivateRoom) {
     isPrivateRoom = false;
@@ -719,7 +809,7 @@ igModal?.addEventListener("click", (e) => { if (e.target === igModal) closeIgMod
 const LEGAL_CONTENT = {
   guidelines: { html: `
 <h2>Community Guidelines</h2>
-<p>Strangr. is built for safe, respectful, and meaningful interactions.</p>
+<p>Strangr is built for safe, respectful, and meaningful interactions.</p>
 <hr/>
 <h3>1. Respect Others</h3>
 <ul><li>No harassment, bullying, or hate speech</li><li>No threats or intimidation</li></ul>
@@ -759,7 +849,7 @@ const LEGAL_CONTENT = {
   <li>Impersonation or deception</li><li>Spam or exploitation</li>
 </ul>
 <h3>3. Liability</h3>
-<p>Strangr. is provided "as is." We are not liable for user behavior or data loss.</p>
+<p>Strangr is provided "as is." We are not liable for user behavior or data loss.</p>
 <h3>4. Termination</h3>
 <p>We may restrict or ban accounts without notice.</p>` }
 };

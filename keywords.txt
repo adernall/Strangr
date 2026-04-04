@@ -1,0 +1,35 @@
+# Strangr keyword list — one keyword per line
+# Lines starting with # are comments and are ignored
+# Keywords are matched against normalized messages (lowercase, symbols stripped)
+# Add/remove as needed. Restart server after changes.
+
+# Sexual content
+sex
+nude
+naked
+porn
+nudes
+xxx
+nsfw
+horny
+
+# Slurs & abuse (add your own as needed)
+idiot
+stupid
+moron
+loser
+retard
+
+# Spam signals
+spam
+scam
+click here
+free money
+buy now
+subscribe
+promo code
+
+# Self-harm / dangerous
+suicide
+kms
+kys
