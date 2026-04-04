@@ -1102,3 +1102,332 @@ body {
 }
 .report-reason-btn:active { transform: scale(.98); }
 .rr-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════════
+   DOODLE — DESKTOP 3-COLUMN LAYOUT
+══════════════════════════════════════════════════════ */
+
+/* Full-screen wrapper that holds 3 columns */
+.chat-layout {
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+  transition: background var(--transition);
+}
+
+/* ── Draw panels (left + right) ─────────────────────── */
+.draw-panel {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-right: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: background var(--transition), border-color var(--transition), flex var(--transition);
+  overflow: hidden;
+}
+.draw-panel-right {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+.draw-panel-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text3);
+  padding: 10px 14px 6px;
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+
+/* Canvas fills the panel */
+.draw-canvas {
+  display: block;
+  width: 100%;
+  flex: 1;
+  touch-action: none;
+  cursor: crosshair;
+}
+.draw-canvas-readonly { cursor: default; }
+
+/* Empty state overlay on partner canvas */
+.draw-panel-empty {
+  position: absolute;
+  inset: 40px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text3);
+  font-size: 12px;
+  text-align: center;
+  padding: 24px;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.draw-panel-empty.hidden { opacity: 0; }
+
+/* ── Floating toolbar trigger button ────────────────── */
+.draw-toolbar-toggle {
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  transform: translateY(-50%);
+  width: 28px; height: 52px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background .15s, color .15s;
+}
+.draw-toolbar-toggle:hover { background: var(--bg-section); color: var(--cyan); }
+.draw-panel-right .draw-toolbar-toggle { display: none; } /* right panel has no toolbar */
+
+/* ── Draw toolbar sidebar ───────────────────────────── */
+.draw-toolbar {
+  position: absolute;
+  top: 0; left: 100%;
+  width: 200px;
+  height: 100%;
+  background: var(--bg-card2);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 20px rgba(0,0,0,.08);
+  z-index: 20;
+  overflow-y: auto;
+  padding: 16px 12px;
+  display: flex; flex-direction: column; gap: 0;
+  transform: translateX(0);
+  transition: transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s;
+}
+.draw-toolbar.hidden {
+  transform: translateX(-100%);
+  box-shadow: none;
+}
+.draw-toolbar::-webkit-scrollbar { width: 3px; }
+.draw-toolbar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
+
+/* Toolbar auto-retract when drawing (JS adds .drawing to panel) */
+.draw-panel-left.drawing .draw-toolbar { transform: translateX(-100%); }
+
+.dt-section {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dt-section:last-child { border-bottom: none; }
+
+.dt-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text3);
+}
+
+/* Brush type buttons */
+.dt-brush-types {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.dt-brush-btn {
+  width: 34px; height: 34px;
+  background: var(--bg-section); border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm); color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.dt-brush-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.dt-brush-btn.active {
+  border-color: var(--cyan);
+  background: rgba(0,196,232,.1);
+  color: var(--cyan);
+}
+
+/* Range slider */
+.dt-range {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+.dt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan-glow);
+  cursor: grab;
+}
+.dt-range:active::-webkit-slider-thumb { cursor: grabbing; }
+
+/* Color wheel */
+.dt-color {
+  width: 100%; height: 40px;
+  border: 1.5px solid var(--border2);
+  border-radius: var(--r-sm);
+  padding: 2px;
+  background: var(--bg-input);
+  cursor: pointer;
+}
+
+/* Swatches */
+.dt-swatches {
+  display: flex; gap: 5px; flex-wrap: wrap;
+}
+.dt-swatch {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform .1s, border-color .1s;
+}
+.dt-swatch:hover { transform: scale(1.2); }
+.dt-swatch.active { border-color: var(--text); }
+
+/* Effect toggles */
+.dt-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+  font-size: 13px; color: var(--text2);
+}
+.dt-checkbox { display: none; }
+.dt-toggle-track {
+  width: 34px; height: 19px; border-radius: 999px;
+  background: var(--border2);
+  position: relative;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.dt-checkbox:checked ~ .dt-toggle-track { background: var(--cyan); }
+.dt-toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 15px; height: 15px; border-radius: 50%; background: #fff;
+  transition: transform .2s;
+}
+.dt-checkbox:checked ~ .dt-toggle-track .dt-toggle-thumb { transform: translateX(15px); }
+
+/* Clear button */
+.dt-clear-btn {
+  padding: 8px 12px; border-radius: var(--r-sm);
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.25);
+  color: var(--danger); font-size: 12px; font-weight: 600;
+  transition: background .15s;
+}
+.dt-clear-btn:hover { background: rgba(239,68,68,.2); }
+
+/* ── Center chat column ─────────────────────────────── */
+/* Override the existing chat-app to fill remaining space */
+.chat-layout .chat-app {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  padding: 0 20px;
+  margin: 0;
+}
+
+/* ── Desktop doodle button (hidden on desktop) ──────── */
+.ci-doodle { display: none; }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE DOODLE SCREEN
+══════════════════════════════════════════════════════ */
+.doodle-app {
+  display: flex; flex-direction: column; height: 100dvh;
+  background: var(--bg);
+  transition: background var(--transition);
+}
+
+.doodle-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-card);
+  transition: background var(--transition), border-color var(--transition);
+}
+.doodle-title {
+  flex: 1; text-align: center;
+  font-family: var(--font-ui); font-size: 17px; font-weight: 800;
+  color: var(--text);
+}
+.dt-clear-mobile {
+  padding: 6px 12px; font-size: 12px;
+}
+
+.doodle-body {
+  flex: 1; display: flex; flex-direction: column;
+  min-height: 0; overflow: hidden;
+}
+
+.doodle-pane {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+.doodle-pane-top { border-bottom: 2px solid var(--border2); }
+
+.doodle-pane-label {
+  position: absolute; top: 6px; left: 10px; z-index: 5;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text3);
+  background: var(--bg-card);
+  padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+/* Mobile toolbar trigger — inside drawing pane */
+.dtt-mobile {
+  position: absolute; top: 6px; right: 8px;
+  width: 32px; height: 32px;
+  border-radius: var(--r-sm);
+  right: unset; left: unset;
+  top: 6px;
+  right: 8px;
+  transform: none;
+  z-index: 5;
+}
+
+/* Mobile toolbar — horizontal strip at top of drawing pane */
+.draw-toolbar-mobile {
+  position: absolute; top: 0; left: 0; right: 0;
+  z-index: 10;
+  background: var(--bg-card2);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  transform: translateY(0);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+}
+.draw-toolbar-mobile.hidden { transform: translateY(-100%); }
+.doodle-pane-top.drawing .draw-toolbar-mobile { transform: translateY(-100%); }
+
+.dt-section-row {
+  flex-direction: row; align-items: center; flex-wrap: wrap;
+  gap: 8px; padding: 0; border: none;
+}
+.dt-range-wide { flex: 1; min-width: 80px; }
+.dt-toggle-compact { gap: 4px; font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — show/hide panels
+══════════════════════════════════════════════════════ */
+/* Below 1100px: hide draw panels, show doodle button in toolbar */
+@media (max-width: 1100px) {
+  .draw-panel { display: none; }
+  .ci-doodle { display: flex; }
+  .chat-layout .chat-app { padding: 0 16px; }
+}
+
+/* Below 700px: smaller chat padding */
+@media (max-width: 700px) {
+  .chat-layout .chat-app { padding: 0 10px; }
+}
+
+/* On very wide screens: give panels a bit more room */
+@media (min-width: 1400px) {
+  .draw-panel { flex: 0 0 320px; }
+}

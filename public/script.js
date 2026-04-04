@@ -216,18 +216,29 @@ function showChat(size, privateMode = false) {
   roomSize = size;
   isPrivateRoom = privateMode;
   partnerNickname = "";
+  partnerUserId   = "";
 
   homeScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
   document.title = "Strangr — Chatting…";
 
   requestNotifPermission();
-  if (!socket.connected) socket.connect();
 
   if (!privateMode) {
-    // Emit joinQueue AND send our nickname
-    socket.emit("joinQueue", { size });
-    if (myNickname) socket.emit("myNickname", myNickname);
+    if (socket.connected) {
+      // Already connected — identify was already sent on connect,
+      // just emit joinQueue directly
+      socket.emit("joinQueue", { size });
+      if (myNickname) socket.emit("myNickname", myNickname);
+    } else {
+      // Not yet connected — store the queue join so the connect handler
+      // sends identify THEN joinQueue in the correct order
+      pendingQueueJoin = { size };
+      socket.connect();
+    }
+  } else {
+    // Private room — just connect; the caller will emit createPrivateRoom/joinPrivateRoom
+    if (!socket.connected) socket.connect();
   }
 }
 
@@ -267,14 +278,31 @@ btnShowPrivate?.addEventListener("click", () => {
 
 btnCreatePrivate?.addEventListener("click", () => {
   showChat(2, true);
-  socket.emit("createPrivateRoom");
+  // If socket just connected, identify fires in connect handler first, then this
+  if (socket.connected) {
+    socket.emit("identify", myUserId); // re-send in case already connected
+    socket.emit("createPrivateRoom");
+  } else {
+    // Queue it — connect handler will send identify, then we need to create room
+    // Use a one-time listener
+    socket.once("connect", () => {
+      socket.emit("createPrivateRoom");
+    });
+  }
 });
 
 btnJoinPrivate?.addEventListener("click", () => {
   const code = privateCodeInput?.value.trim().toUpperCase();
   if (!code) { showToast("Enter a room code first.", "warn"); return; }
   showChat(2, true);
-  socket.emit("joinPrivateRoom", code);
+  if (socket.connected) {
+    socket.emit("identify", myUserId);
+    socket.emit("joinPrivateRoom", code);
+  } else {
+    socket.once("connect", () => {
+      socket.emit("joinPrivateRoom", code);
+    });
+  }
 });
 
 privateCodeInput?.addEventListener("keydown", (e) => {
@@ -467,10 +495,25 @@ setInterval(fetchStats, 10_000);
 // ══════════════════════════════════════════════════════════════════════════════
 // SOCKET EVENTS
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// SOCKET EVENTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Stores what to do after socket connects + identify is sent
+let pendingQueueJoin = null; // { size } or null
+
 socket.on("connect", () => {
   console.log("[socket] connected:", socket.id);
-  // NEW: identify ourselves to the server with our persistent userId
+  // Send identify FIRST so server maps userId before any other events
   socket.emit("identify", myUserId);
+  // Flush pending queue join — emitted right after identify in the same flush
+  // so server processes them in order (same socket, FIFO guaranteed)
+  if (pendingQueueJoin) {
+    const { size } = pendingQueueJoin;
+    pendingQueueJoin = null;
+    socket.emit("joinQueue", { size });
+    if (myNickname) socket.emit("myNickname", myNickname);
+  }
 });
 
 socket.on("waiting", ({ size }) => {
@@ -506,6 +549,10 @@ socket.on("matched", ({ size, private: priv }) => {
 
   // Send our nickname to partner after matching
   if (myNickname) socket.emit("myNickname", myNickname);
+
+  // Show report button — partnerUserId may arrive via separate event,
+  // but reveal button now so it's ready. Button is gated on `connected`.
+  showReportBtn();
 
   notifyUser("Strangr ⚡", priv ? "Your friend joined!" : size > 2 ? `Joined a ${size}-person group!` : "A stranger connected!");
 });
@@ -662,7 +709,7 @@ const btnReport     = document.getElementById("btnReport");
 const btnCloseReport = document.getElementById("btnCloseReport");
 
 btnReport?.addEventListener("click", () => {
-  if (!partnerUserId) { showToast("No one to report right now.", "warn"); return; }
+  if (!connected) { showToast("Connect to a stranger first.", "warn"); return; }
   reportModal?.classList.remove("hidden");
 });
 
@@ -672,11 +719,10 @@ reportModal?.addEventListener("click", e => { if (e.target === reportModal) repo
 document.querySelectorAll(".report-reason-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const reason = btn.dataset.reason;
-    if (!partnerUserId) return;
-    socket.emit("reportUser", { targetUserId: partnerUserId, reason });
+    const target = partnerUserId || "unknown";
+    socket.emit("reportUser", { targetUserId: target, reason });
     reportModal?.classList.add("hidden");
-    // Prevent double-reporting same session
-    hideReportBtn();
+    hideReportBtn(); // one report per session
   });
 });
 
@@ -880,3 +926,486 @@ legalModal?.addEventListener("click", (e) => { if (e.target === legalModal) clos
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
 showHome();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOODLE ENGINE
+// Handles: desktop left/right panels + mobile doodle screen
+// Architecture: one shared brush state, two canvas pairs (desktop + mobile)
+// Strokes are batched into segments and emitted via socket.emit("drawStroke")
+// Incoming strokes are replayed on the partner canvas
+// Changing settings only affects NEW strokes — past draws are untouched
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Brush state (single source of truth for both desktop + mobile) ────────────
+const brush = {
+  type:    "round",   // round | square | spray | eraser
+  size:    6,
+  color:   "#6c4ff7",
+  opacity: 1.0,
+  glow:    false,
+  shadow:  false,
+};
+
+// ── Canvas references ─────────────────────────────────────────────────────────
+const myCanvasD       = document.getElementById("myCanvas");          // desktop my
+const partnerCanvasD  = document.getElementById("partnerCanvas");     // desktop partner
+const myCanvasM       = document.getElementById("myCanvasMobile");    // mobile my
+const partnerCanvasM  = document.getElementById("partnerCanvasMobile");// mobile partner
+
+// ── Drawing state ─────────────────────────────────────────────────────────────
+let isDrawing      = false;
+let lastX          = 0;
+let lastY          = 0;
+let strokePoints   = [];   // buffer current stroke for batched emit
+let emitTimer      = null;
+
+// ── Helpers: get CSS variable resolved value ──────────────────────────────────
+function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Canvas background = site background colour (theme-aware)
+function canvasBg() {
+  return getComputedStyle(document.documentElement).getPropertyValue("--bg-card").trim() || "#ffffff";
+}
+
+// ── Resize canvas to match its CSS display size ───────────────────────────────
+function resizeCanvas(canvas) {
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width < 1 || rect.height < 1) return;
+  // Save existing drawing
+  const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+  canvas.width  = rect.width  * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function initCanvas(canvas) {
+  if (!canvas) return;
+  const rect  = canvas.getBoundingClientRect();
+  canvas.width  = rect.width  * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  fillCanvasBg(canvas);
+}
+
+function fillCanvasBg(canvas) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = canvasBg();
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+// Reinit all canvases when theme changes or screen resizes
+function reinitAllCanvases() {
+  [myCanvasD, partnerCanvasD, myCanvasM, partnerCanvasM].forEach(initCanvas);
+}
+
+// ── Apply brush effects to a context ─────────────────────────────────────────
+function applyEffects(ctx, color, size) {
+  ctx.shadowBlur   = 0;
+  ctx.shadowColor  = "transparent";
+
+  if (brush.glow && brush.type !== "eraser") {
+    ctx.shadowBlur  = size * 3;
+    ctx.shadowColor = color;
+  }
+  if (brush.shadow && !brush.glow && brush.type !== "eraser") {
+    ctx.shadowBlur    = size * 1.5;
+    ctx.shadowColor   = "rgba(0,0,0,0.45)";
+    ctx.shadowOffsetX = size * 0.5;
+    ctx.shadowOffsetY = size * 0.5;
+  }
+}
+
+// ── Draw a single segment on a canvas ─────────────────────────────────────────
+// strokeData: { x1, y1, x2, y2, color, size, brushType, opacity, glow, shadow }
+function renderSegment(canvas, seg) {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+
+  ctx.save();
+  ctx.globalAlpha = seg.opacity ?? 1;
+
+  if (seg.brushType === "eraser") {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(seg.x2, seg.y2, (seg.size ?? 10) / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  ctx.globalCompositeOperation = "source-over";
+  ctx.strokeStyle = seg.color;
+  ctx.fillStyle   = seg.color;
+  ctx.lineCap     = seg.brushType === "square" ? "square" : "round";
+  ctx.lineJoin    = "round";
+  ctx.lineWidth   = seg.size ?? 6;
+
+  // Apply glow / shadow
+  ctx.shadowBlur  = 0;
+  ctx.shadowColor = "transparent";
+  if (seg.glow) {
+    ctx.shadowBlur  = (seg.size ?? 6) * 3;
+    ctx.shadowColor = seg.color;
+  } else if (seg.shadow) {
+    ctx.shadowBlur    = (seg.size ?? 6) * 1.5;
+    ctx.shadowColor   = "rgba(0,0,0,0.45)";
+    ctx.shadowOffsetX = (seg.size ?? 6) * 0.5;
+    ctx.shadowOffsetY = (seg.size ?? 6) * 0.5;
+  }
+
+  if (seg.brushType === "spray") {
+    // Spray: random dots around the point
+    const density = Math.max(6, (seg.size ?? 6) * 2);
+    const radius  = (seg.size ?? 6) * 1.8;
+    for (let i = 0; i < density; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r     = Math.random() * radius;
+      const sx    = seg.x2 + Math.cos(angle) * r;
+      const sy    = seg.y2 + Math.sin(angle) * r;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(seg.x1, seg.y1);
+    ctx.lineTo(seg.x2, seg.y2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// ── Get normalised coords from pointer/touch event ────────────────────────────
+function getCoords(canvas, e) {
+  const rect = canvas.getBoundingClientRect();
+  const src  = e.touches ? e.touches[0] : e;
+  return {
+    x: src.clientX - rect.left,
+    y: src.clientY - rect.top,
+  };
+}
+
+// ── Emit buffered stroke to server ────────────────────────────────────────────
+function flushStroke() {
+  if (strokePoints.length < 1) return;
+  socket.emit("drawStroke", {
+    points:    strokePoints,
+    color:     brush.type === "eraser" ? "#transparent" : brush.color,
+    size:      brush.size,
+    brushType: brush.type,
+    opacity:   brush.opacity,
+    glow:      brush.glow,
+    shadow:    brush.shadow,
+  });
+  strokePoints = [];
+}
+
+// ── Draw handler (works for both desktop + mobile canvases) ───────────────────
+function onDrawStart(canvas, e) {
+  e.preventDefault();
+  isDrawing = true;
+  const { x, y } = getCoords(canvas, e);
+  lastX = x; lastY = y;
+  strokePoints = [{ x1: x, y1: y, x2: x, y2: y }];
+
+  // Auto-retract toolbar while drawing
+  const panel  = canvas.closest(".draw-panel-left, .doodle-pane-top");
+  if (panel) panel.classList.add("drawing");
+}
+
+function onDrawMove(canvas, e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const { x, y } = getCoords(canvas, e);
+
+  const seg = {
+    x1: lastX, y1: lastY, x2: x, y2: y,
+    color:     brush.type === "eraser" ? null : brush.color,
+    size:      brush.size,
+    brushType: brush.type,
+    opacity:   brush.opacity,
+    glow:      brush.glow,
+    shadow:    brush.shadow,
+  };
+
+  renderSegment(canvas, seg);
+  strokePoints.push({ x1: lastX, y1: lastY, x2: x, y2: y });
+  lastX = x; lastY = y;
+
+  // Batch emit every 50ms
+  if (!emitTimer) {
+    emitTimer = setTimeout(() => {
+      flushStroke();
+      emitTimer = null;
+    }, 50);
+  }
+}
+
+function onDrawEnd(canvas) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  clearTimeout(emitTimer);
+  emitTimer = null;
+  flushStroke();
+
+  const panel = canvas.closest(".draw-panel-left, .doodle-pane-top");
+  if (panel) {
+    setTimeout(() => panel.classList.remove("drawing"), 1200);
+  }
+}
+
+// ── Attach draw listeners to a canvas ────────────────────────────────────────
+function attachDrawListeners(canvas) {
+  if (!canvas) return;
+  canvas.addEventListener("mousedown",  e => onDrawStart(canvas, e));
+  canvas.addEventListener("mousemove",  e => onDrawMove(canvas, e));
+  canvas.addEventListener("mouseup",    () => onDrawEnd(canvas));
+  canvas.addEventListener("mouseleave", () => onDrawEnd(canvas));
+  canvas.addEventListener("touchstart", e => onDrawStart(canvas, e), { passive: false });
+  canvas.addEventListener("touchmove",  e => onDrawMove(canvas, e),  { passive: false });
+  canvas.addEventListener("touchend",   () => onDrawEnd(canvas));
+}
+
+// ── Incoming draw stroke from partner ────────────────────────────────────────
+function replayStroke(data, canvas) {
+  if (!canvas || !data?.points) return;
+  // Hide the empty placeholder once drawing arrives
+  const emptyEl = canvas.closest(".draw-panel, .doodle-pane")?.querySelector(".draw-panel-empty");
+  if (emptyEl) emptyEl.classList.add("hidden");
+
+  for (const pt of data.points) {
+    renderSegment(canvas, {
+      x1: pt.x1, y1: pt.y1, x2: pt.x2, y2: pt.y2,
+      color:     data.color,
+      size:      data.size,
+      brushType: data.brushType,
+      opacity:   data.opacity,
+      glow:      data.glow,
+      shadow:    data.shadow,
+    });
+  }
+}
+
+// ── Socket draw events ────────────────────────────────────────────────────────
+socket.on("drawStroke", (data) => {
+  replayStroke(data, partnerCanvasD);
+  replayStroke(data, partnerCanvasM);
+});
+
+socket.on("clearCanvas", () => {
+  [partnerCanvasD, partnerCanvasM].forEach(c => {
+    if (!c) return;
+    fillCanvasBg(c);
+    // Show empty placeholder again
+    const emptyEl = c.closest(".draw-panel, .doodle-pane")?.querySelector(".draw-panel-empty");
+    if (emptyEl) emptyEl.classList.remove("hidden");
+  });
+});
+
+// ── Clear own canvas ─────────────────────────────────────────────────────────
+function clearMyCanvas() {
+  [myCanvasD, myCanvasM].forEach(c => { if (c) fillCanvasBg(c); });
+  socket.emit("clearCanvas");
+}
+document.getElementById("btnClearCanvas")?.addEventListener("click", clearMyCanvas);
+document.getElementById("btnClearMobile")?.addEventListener("click", clearMyCanvas);
+
+// ── Also clear partner canvases when a new match starts ───────────────────────
+// (hook into existing socket.on("matched") by extending it after the fact)
+const _origMatchedHandler = null; // socket.on already registered above
+// We add a second listener — Socket.IO supports multiple listeners per event
+socket.on("matched", () => {
+  [myCanvasD, partnerCanvasD, myCanvasM, partnerCanvasM].forEach(c => {
+    if (!c) return;
+    fillCanvasBg(c);
+  });
+  // Restore empty placeholder on partner panels
+  document.querySelectorAll(".draw-panel-empty").forEach(el => el.classList.remove("hidden"));
+});
+
+// ── Toolbar wiring — DESKTOP ──────────────────────────────────────────────────
+const drawToolbarD   = document.getElementById("drawToolbar");
+const toolbarToggleD = document.getElementById("drawToolbarToggle");
+
+toolbarToggleD?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  drawToolbarD?.classList.toggle("hidden");
+});
+// Close toolbar when clicking outside
+document.addEventListener("click", (e) => {
+  if (!drawToolbarD?.contains(e.target) && e.target !== toolbarToggleD) {
+    drawToolbarD?.classList.add("hidden");
+  }
+});
+
+// Sync brush type buttons — desktop
+document.querySelectorAll("[data-brush]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    brush.type = btn.dataset.brush;
+    document.querySelectorAll("[data-brush]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    // Also sync mobile buttons
+    document.querySelectorAll(`[data-brush-m="${brush.type}"]`).forEach(b => {
+      document.querySelectorAll("[data-brush-m]").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+    });
+  });
+});
+
+// Brush size
+const brushSizeSlider = document.getElementById("brushSize");
+const brushSizeVal    = document.getElementById("brushSizeVal");
+brushSizeSlider?.addEventListener("input", () => {
+  brush.size = Number(brushSizeSlider.value);
+  if (brushSizeVal) brushSizeVal.textContent = brush.size;
+  // Sync mobile
+  const m = document.getElementById("brushSizeMobile");
+  if (m) m.value = brush.size;
+});
+
+// Brush colour
+const brushColorInput = document.getElementById("brushColor");
+brushColorInput?.addEventListener("input", () => {
+  brush.color = brushColorInput.value;
+  const m = document.getElementById("brushColorMobile");
+  if (m) m.value = brush.color;
+});
+
+// Swatches
+document.querySelectorAll(".dt-swatch").forEach(btn => {
+  btn.addEventListener("click", () => {
+    brush.color = btn.dataset.color;
+    if (brushColorInput) brushColorInput.value = brush.color;
+    const m = document.getElementById("brushColorMobile");
+    if (m) m.value = brush.color;
+    document.querySelectorAll(".dt-swatch").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// Opacity
+const brushOpacitySlider = document.getElementById("brushOpacity");
+const brushOpacityVal    = document.getElementById("brushOpacityVal");
+brushOpacitySlider?.addEventListener("input", () => {
+  brush.opacity = Number(brushOpacitySlider.value) / 100;
+  if (brushOpacityVal) brushOpacityVal.textContent = brushOpacitySlider.value;
+});
+
+// Effects — desktop
+document.getElementById("effectGlow")?.addEventListener("change", e => {
+  brush.glow = e.target.checked;
+  const m = document.getElementById("effectGlowMobile");
+  if (m) m.checked = brush.glow;
+});
+document.getElementById("effectShadow")?.addEventListener("change", e => {
+  brush.shadow = e.target.checked;
+  const m = document.getElementById("effectShadowMobile");
+  if (m) m.checked = brush.shadow;
+});
+
+// ── Toolbar wiring — MOBILE ───────────────────────────────────────────────────
+const drawToolbarM   = document.getElementById("drawToolbarMobile");
+const toolbarToggleM = document.getElementById("drawToolbarToggleMobile");
+
+toolbarToggleM?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  drawToolbarM?.classList.toggle("hidden");
+});
+
+// Mobile brush type
+document.querySelectorAll("[data-brush-m]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    brush.type = btn.dataset.brushM;
+    document.querySelectorAll("[data-brush-m]").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    // Sync desktop
+    document.querySelectorAll(`[data-brush="${brush.type}"]`).forEach(b => {
+      document.querySelectorAll("[data-brush]").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+    });
+  });
+});
+
+// Mobile size
+document.getElementById("brushSizeMobile")?.addEventListener("input", e => {
+  brush.size = Number(e.target.value);
+  if (brushSizeSlider) brushSizeSlider.value = brush.size;
+  if (brushSizeVal)    brushSizeVal.textContent = brush.size;
+});
+
+// Mobile colour
+document.getElementById("brushColorMobile")?.addEventListener("input", e => {
+  brush.color = e.target.value;
+  if (brushColorInput) brushColorInput.value = brush.color;
+});
+
+// Mobile effects
+document.getElementById("effectGlowMobile")?.addEventListener("change", e => {
+  brush.glow = e.target.checked;
+  const d = document.getElementById("effectGlow");
+  if (d) d.checked = brush.glow;
+});
+document.getElementById("effectShadowMobile")?.addEventListener("change", e => {
+  brush.shadow = e.target.checked;
+  const d = document.getElementById("effectShadow");
+  if (d) d.checked = brush.shadow;
+});
+
+// ── Mobile doodle screen navigation ──────────────────────────────────────────
+const doodleScreen = document.getElementById("doodleScreen");
+
+document.getElementById("btnDoodle")?.addEventListener("click", () => {
+  doodleScreen?.classList.remove("hidden");
+  chatScreen?.classList.add("hidden");
+  // Init mobile canvases on first open
+  setTimeout(() => {
+    initCanvas(myCanvasM);
+    initCanvas(partnerCanvasM);
+    attachDrawListeners(myCanvasM);
+  }, 50);
+});
+
+document.getElementById("btnDoodleBack")?.addEventListener("click", () => {
+  doodleScreen?.classList.add("hidden");
+  chatScreen?.classList.remove("hidden");
+  // Clear canvases when leaving doodle screen (drawings cleared, chat kept)
+  [myCanvasM, partnerCanvasM].forEach(fillCanvasBg);
+  // Don't emit clearCanvas — only MY side clears locally on back
+});
+
+// ── Init desktop canvases on load ────────────────────────────────────────────
+function initDesktopDoodle() {
+  initCanvas(myCanvasD);
+  initCanvas(partnerCanvasD);
+  attachDrawListeners(myCanvasD);
+  // Start toolbar hidden
+  drawToolbarD?.classList.add("hidden");
+}
+
+// Reinit on resize (canvas dimensions must match layout)
+let resizeDebounce;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeDebounce);
+  resizeDebounce = setTimeout(reinitAllCanvases, 200);
+});
+
+// Run when chat screen becomes visible
+const chatScreenObserver = new MutationObserver(() => {
+  if (!chatScreen?.classList.contains("hidden")) {
+    requestAnimationFrame(initDesktopDoodle);
+  }
+});
+if (chatScreen) chatScreenObserver.observe(chatScreen, { attributes: true, attributeFilter: ["class"] });

@@ -320,6 +320,22 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("typing", !!isTyping);
   });
 
+  // ── Draw stroke relay — lightweight, just relay path data to room partners ──
+  socket.on("drawStroke", (data) => {
+    const roomId = userRoom[socket.id];
+    if (!roomId) return;
+    // data is a small object: { points, color, size, brushType, opacity, glow, shadow }
+    // No validation needed — canvas renders it harmlessly on the client
+    socket.to(roomId).emit("drawStroke", data);
+  });
+
+  // ── Clear canvas relay ─────────────────────────────────────────────────────
+  socket.on("clearCanvas", () => {
+    const roomId = userRoom[socket.id];
+    if (!roomId) return;
+    socket.to(roomId).emit("clearCanvas");
+  });
+
   // ── skip (UNCHANGED) ──────────────────────────────────────────────────────
   socket.on("skip", async ({ size } = {}) => {
     if (!await socketLimiter("skip", socket)) return;
