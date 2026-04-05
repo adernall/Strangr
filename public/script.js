@@ -6,65 +6,65 @@
 // ══════════════════════════════════════════════════════════════════════════════
 
 // Screens
-const homeScreen  = document.getElementById("homeScreen");
-const chatScreen  = document.getElementById("chatScreen");
+const homeScreen = document.getElementById("homeScreen");
+const chatScreen = document.getElementById("chatScreen");
 
 // Home
-const btnStart          = document.getElementById("btnStart");
-const btnBack           = document.getElementById("btnBack");
-const nicknameInput     = document.getElementById("nicknameInput");
-const onlineCountHome   = document.getElementById("onlineCountHome");
-const btnShowPrivate    = document.getElementById("btnShowPrivate");
-const privatePanel      = document.getElementById("privatePanel");
-const privateCodeInput  = document.getElementById("privateCodeInput");
-const btnJoinPrivate    = document.getElementById("btnJoinPrivate");
-const btnCreatePrivate  = document.getElementById("btnCreatePrivate");
+const btnStart = document.getElementById("btnStart");
+const btnBack = document.getElementById("btnBack");
+const nicknameInput = document.getElementById("nicknameInput");
+const onlineCountHome = document.getElementById("onlineCountHome");
+const btnShowPrivate = document.getElementById("btnShowPrivate");
+const privatePanel = document.getElementById("privatePanel");
+const privateCodeInput = document.getElementById("privateCodeInput");
+const btnJoinPrivate = document.getElementById("btnJoinPrivate");
+const btnCreatePrivate = document.getElementById("btnCreatePrivate");
 
 // Chat
-const messagesEl        = document.getElementById("messages");
-const emptyStateEl      = document.getElementById("emptyState");
-const statusDot         = document.getElementById("statusDot");
-const statusText        = document.getElementById("statusText");
-const roomTag           = document.getElementById("roomTag");
-const messageInput      = document.getElementById("messageInput");
-const sendBtn           = document.getElementById("sendBtn");
-const skipBtn           = document.getElementById("skipBtn");
-const charCountEl       = document.getElementById("charCount");
-const onlineCount       = document.getElementById("onlineCount");
-const typingIndicator   = document.getElementById("typingIndicator");
-const typingLabel       = document.getElementById("typingLabel");
+const messagesEl = document.getElementById("messages");
+const emptyStateEl = document.getElementById("emptyState");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+const roomTag = document.getElementById("roomTag");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+const skipBtn = document.getElementById("skipBtn");
+const charCountEl = document.getElementById("charCount");
+const onlineCount = document.getElementById("onlineCount");
+const typingIndicator = document.getElementById("typingIndicator");
+const typingLabel = document.getElementById("typingLabel");
 
 // Image
-const btnImg        = document.getElementById("btnImg");
-const imageInput    = document.getElementById("imageInput");
+const btnImg = document.getElementById("btnImg");
+const imageInput = document.getElementById("imageInput");
 const imgPreviewSlot = document.getElementById("imgPreviewSlot");
 
 // Instagram
-const igModal       = document.getElementById("igModal");
-const igInput       = document.getElementById("igInput");
-const igModalClose  = document.getElementById("igModalClose");
+const igModal = document.getElementById("igModal");
+const igInput = document.getElementById("igInput");
+const igModalClose = document.getElementById("igModalClose");
 const igModalCancel = document.getElementById("igModalCancel");
-const igModalSave   = document.getElementById("igModalSave");
-const btnIgAdd      = document.getElementById("btnIgAdd");
-const btnIgShare    = document.getElementById("btnIgShare");
+const igModalSave = document.getElementById("igModalSave");
+const btnIgAdd = document.getElementById("btnIgAdd");
+const btnIgShare = document.getElementById("btnIgShare");
 
 // Private room modal
 const privateCreatedModal = document.getElementById("privateCreatedModal");
 const privateCreatedClose = document.getElementById("privateCreatedClose");
-const privateCodeDisplay  = document.getElementById("privateCodeDisplay");
-const btnCopyCode         = document.getElementById("btnCopyCode");
+const privateCodeDisplay = document.getElementById("privateCodeDisplay");
+const btnCopyCode = document.getElementById("btnCopyCode");
 
 // Legal
-const legalModal      = document.getElementById("legalModal");
+const legalModal = document.getElementById("legalModal");
 const legalModalClose = document.getElementById("legalModalClose");
-const legalBody       = document.getElementById("legalBody");
+const legalBody = document.getElementById("legalBody");
 
 // Nav more
-const btnNavMore   = document.getElementById("btnNavMore");
-const navDropdown  = document.getElementById("navDropdown");
-const themeToggle  = document.getElementById("themeToggle");
-const themeLabel   = document.getElementById("themeLabel");
-const mainNav      = document.getElementById("mainNav");
+const btnNavMore = document.getElementById("btnNavMore");
+const navDropdown = document.getElementById("navDropdown");
+const themeToggle = document.getElementById("themeToggle");
+const themeLabel = document.getElementById("themeLabel");
+const mainNav = document.getElementById("mainNav");
 
 // Toast
 const toastEl = document.getElementById("toast");
@@ -131,14 +131,14 @@ document.addEventListener("click", (e) => {
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════════
-let connected     = false;
-let roomSize      = 2;
+let connected = false;
+let roomSize = 2;
 let isPrivateRoom = false;
-let myIgHandle    = null;
-let pendingImg    = null;
+let myIgHandle = null;
+let pendingImg = null;
 
 // Nickname — my own + partner's
-let myNickname      = "";  // set from input
+let myNickname = "";  // set from input
 let partnerNickname = "";  // received from partner via socket
 
 // ── userId — persistent anonymous ID ─────────────────────────────────────────
@@ -216,7 +216,7 @@ function showChat(size, privateMode = false) {
   roomSize = size;
   isPrivateRoom = privateMode;
   partnerNickname = "";
-  partnerUserId   = "";
+  partnerUserId = "";
 
   homeScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
@@ -255,10 +255,10 @@ btnBack?.addEventListener("click", () => {
   if (connected) socket.emit("skip", { size: roomSize });
   stopTyping();
   socket.disconnect();
-  connected       = false;
-  isPrivateRoom   = false;
+  connected = false;
+  isPrivateRoom = false;
   partnerNickname = "";
-  partnerUserId   = "";   // NEW
+  partnerUserId = "";   // NEW
   showTypingIndicator(false);
   clearMessages();
   clearPendingImg();
@@ -397,8 +397,8 @@ function showTypingIndicator(show) {
 }
 
 // ── Resolve display names ─────────────────────────────────────────────────────
-function myLabel()      { return myNickname      || "You"; }
-function strangerLabel(){ return partnerNickname || "Stranger"; }
+function myLabel() { return myNickname || "You"; }
+function strangerLabel() { return partnerNickname || "Stranger"; }
 
 // ── Append message ────────────────────────────────────────────────────────────
 function appendMessage(type, content, mode = "text") {
@@ -485,7 +485,7 @@ async function fetchStats() {
     if (!res.ok) return;
     const d = await res.json();
     const n = d.online ?? "—";
-    if (onlineCount)     onlineCount.textContent     = n;
+    if (onlineCount) onlineCount.textContent = n;
     if (onlineCountHome) onlineCountHome.textContent = n;
   } catch { /* ignore */ }
 }
@@ -523,7 +523,7 @@ socket.on("waiting", ({ size }) => {
   clearMessages();
   setRoomTag(0);
   partnerNickname = "";
-  partnerUserId   = "";   // NEW: reset partner tracking
+  partnerUserId = "";   // NEW: reset partner tracking
 });
 
 socket.on("matched", ({ size, private: priv }) => {
@@ -534,7 +534,7 @@ socket.on("matched", ({ size, private: priv }) => {
   const label = priv
     ? "Connected privately!"
     : size > 2 ? `In a ${size}-person group!`
-    : "Connected — say hi!";
+      : "Connected — say hi!";
 
   setStatus("connected", label);
   setInputEnabled(true);
@@ -543,7 +543,7 @@ socket.on("matched", ({ size, private: priv }) => {
   const sysmsg = priv
     ? "You're in a private room."
     : size > 2 ? `You're now in a ${size}-person group chat.`
-    : `You're now chatting with ${stranger}.`;
+      : `You're now chatting with ${stranger}.`;
 
   appendMessage("system", sysmsg);
 
@@ -586,9 +586,9 @@ socket.on("partnerLeft", () => {
   setStatus("left", `${who} disconnected`);
   setInputEnabled(false);
   appendMessage("system", `${who} has left the chat.`);
-  isPrivateRoom   = false;
+  isPrivateRoom = false;
   partnerNickname = "";
-  partnerUserId   = "";   // NEW
+  partnerUserId = "";   // NEW
   hideReportBtn();         // NEW
 });
 
@@ -633,10 +633,10 @@ socket.on("disconnect", () => {
 
 socket.on("rateLimited", ({ action, retryAfter }) => {
   const msgs = {
-    message:   `Slow down! Wait ${retryAfter}s.`,
-    skip:      `Too many skips! Wait ${retryAfter}s.`,
-    igShare:   `IG limit. Wait ${retryAfter}s.`,
-    imageShare:`Image limit. Wait ${retryAfter}s.`,
+    message: `Slow down! Wait ${retryAfter}s.`,
+    skip: `Too many skips! Wait ${retryAfter}s.`,
+    igShare: `IG limit. Wait ${retryAfter}s.`,
+    imageShare: `Image limit. Wait ${retryAfter}s.`,
     joinQueue: `Queue limit. Wait ${retryAfter}s.`,
   };
   showToast(msgs[action] || `Rate limited. Retry in ${retryAfter}s.`, "warn");
@@ -704,8 +704,8 @@ function hideReportBtn() {
 }
 
 // Report modal
-const reportModal   = document.getElementById("reportModal");
-const btnReport     = document.getElementById("btnReport");
+const reportModal = document.getElementById("reportModal");
+const btnReport = document.getElementById("btnReport");
 const btnCloseReport = document.getElementById("btnCloseReport");
 
 btnReport?.addEventListener("click", () => {
@@ -736,7 +736,7 @@ skipBtn?.addEventListener("click", () => {
   clearPendingImg();
   setRoomTag(0);
   partnerNickname = "";
-  partnerUserId   = "";   // NEW
+  partnerUserId = "";   // NEW
   hideReportBtn();         // NEW
 
   if (isPrivateRoom) {
@@ -748,10 +748,74 @@ skipBtn?.addEventListener("click", () => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-// IMAGE SHARING
+// IMAGE SHARING — upload, paste, drag & drop
 // ══════════════════════════════════════════════════════════════════════════════
-const MAX_IMG_BYTES = 2 * 1024 * 1024;
+const MAX_IMG_BYTES = 2 * 1024 * 1024; // 2 MB raw file limit
+const MAX_IMG_DIM = 1200;             // max dimension for compression
+const JPEG_QUALITY = 0.8;              // JPEG compression quality
 
+// ── Compress image via canvas to keep data URL under socket.io buffer ────────
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      // Scale down if too large
+      if (width > MAX_IMG_DIM || height > MAX_IMG_DIM) {
+        const ratio = Math.min(MAX_IMG_DIM / width, MAX_IMG_DIM / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      // Use JPEG for photos (smaller), PNG for transparency
+      const isPng = file.type === "image/png";
+      const dataUrl = canvas.toDataURL(isPng ? "image/png" : "image/jpeg", JPEG_QUALITY);
+      resolve(dataUrl);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = url;
+  });
+}
+
+// ── Process an image file (shared by upload, paste, drag) ────────────────────
+async function processImageFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast("Only image files are supported.", "error");
+    return;
+  }
+  if (file.size > MAX_IMG_BYTES * 2) {
+    // Allow up to 4MB raw since we'll compress it
+    showToast("Image too large. Max 4 MB.", "error");
+    return;
+  }
+  try {
+    const dataUrl = await compressImage(file);
+    // Check compressed size (base64 data after comma)
+    const base64Part = dataUrl.split(",")[1] || "";
+    const compressedBytes = Math.ceil((base64Part.length * 3) / 4);
+    if (compressedBytes > MAX_IMG_BYTES) {
+      showToast("Image still too large after compression. Try a smaller image.", "error");
+      return;
+    }
+    pendingImg = dataUrl;
+    showImgPreview(dataUrl);
+    showToast("Image ready — press Enter or Send to share.", "success", 2500);
+  } catch {
+    showToast("Failed to process image.", "error");
+  }
+}
+
+// ── Image button — click to upload ───────────────────────────────────────────
 btnImg?.addEventListener("click", () => {
   if (!connected) return;
   imageInput.value = "";
@@ -760,24 +824,32 @@ btnImg?.addEventListener("click", () => {
 
 imageInput?.addEventListener("change", () => {
   const file = imageInput.files[0];
-  if (!file) return;
-  if (!file.type.startsWith("image/")) { showToast("Only image files are supported.", "error"); return; }
-  if (file.size > MAX_IMG_BYTES) { showToast("Image too large. Max 2 MB.", "error"); return; }
-  const reader = new FileReader();
-  reader.onload = (e) => { pendingImg = e.target.result; showImgPreview(pendingImg); };
-  reader.readAsDataURL(file);
+  if (file) processImageFile(file);
 });
 
+// ── Preview ──────────────────────────────────────────────────────────────────
 function showImgPreview(dataUrl) {
   clearPendingImg(true);
   const wrap = document.createElement("div");
   wrap.className = "img-preview-wrap";
   wrap.id = "imgPreviewWrap";
-  wrap.innerHTML = `<img src="${dataUrl}" alt="preview" /><button class="img-preview-clear" id="imgPreviewClear" aria-label="Cancel">✕</button>`;
+
+  const img = document.createElement("img");
+  img.src = dataUrl;
+  img.alt = "preview";
+
+  const clearBtn = document.createElement("button");
+  clearBtn.className = "img-preview-clear";
+  clearBtn.setAttribute("aria-label", "Cancel");
+  clearBtn.textContent = "✕";
+  clearBtn.addEventListener("click", () => clearPendingImg(true));
+
+  wrap.appendChild(img);
+  wrap.appendChild(clearBtn);
   imgPreviewSlot.appendChild(wrap);
-  document.getElementById("imgPreviewClear")?.addEventListener("click", () => clearPendingImg(true));
 }
 
+// ── Send ─────────────────────────────────────────────────────────────────────
 function sendPendingImage() {
   if (!pendingImg || !connected) return;
   socket.emit("imageShare", pendingImg);
@@ -790,24 +862,77 @@ function clearPendingImg(removePreview = true) {
   if (removePreview) document.getElementById("imgPreviewWrap")?.remove();
 }
 
-// Paste support
+// ── Paste support ────────────────────────────────────────────────────────────
 document.addEventListener("paste", (e) => {
   if (!connected) return;
+  // Only handle paste when chat screen is visible
+  if (chatScreen?.classList.contains("hidden")) return;
   const items = Array.from(e.clipboardData?.items || []);
   const imageItem = items.find(item => item.type.startsWith("image/"));
   if (!imageItem) return;
   e.preventDefault();
   const file = imageItem.getAsFile();
-  if (!file) return;
-  if (file.size > MAX_IMG_BYTES) { showToast("Pasted image too large. Max 2 MB.", "error"); return; }
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    pendingImg = ev.target.result;
-    showImgPreview(pendingImg);
-    showToast("Image ready — press Enter or Send to share.", "success", 2500);
-  };
-  reader.readAsDataURL(file);
+  if (file) processImageFile(file);
 });
+
+// ── Drag & Drop support on the chat area ─────────────────────────────────────
+(function initDragDrop() {
+  const dropTarget = document.getElementById("messages");
+  if (!dropTarget) return;
+
+  let dragCounter = 0;
+
+  // Create drop zone overlay
+  const dropOverlay = document.createElement("div");
+  dropOverlay.className = "drop-overlay";
+  dropOverlay.innerHTML = `
+    <div class="drop-overlay-content">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+      </svg>
+      <span>Drop image to share</span>
+    </div>
+  `;
+  dropTarget.style.position = "relative";
+  dropTarget.appendChild(dropOverlay);
+
+  dropTarget.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter++;
+    if (!connected) return;
+    if (e.dataTransfer?.types?.includes("Files")) {
+      dropOverlay.classList.add("active");
+    }
+  });
+
+  dropTarget.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  dropTarget.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      dropOverlay.classList.remove("active");
+    }
+  });
+
+  dropTarget.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter = 0;
+    dropOverlay.classList.remove("active");
+    if (!connected) { showToast("Connect to a stranger first.", "warn"); return; }
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      processImageFile(file);
+    }
+  });
+})();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INSTAGRAM
@@ -853,7 +978,8 @@ igModal?.addEventListener("click", (e) => { if (e.target === igModal) closeIgMod
 // LEGAL MODAL
 // ══════════════════════════════════════════════════════════════════════════════
 const LEGAL_CONTENT = {
-  guidelines: { html: `
+  guidelines: {
+    html: `
 <h2>Community Guidelines</h2>
 <p>Strangr is built for safe, respectful, and meaningful interactions.</p>
 <hr/>
@@ -869,7 +995,8 @@ const LEGAL_CONTENT = {
 <ul><li>Do not share or request personal information</li></ul>
 <h3>6. Consequences</h3>
 <p>Violations may result in warning, temporary ban, or permanent ban.</p>` },
-  privacy: { html: `
+  privacy: {
+    html: `
 <h2>Privacy Policy</h2>
 <p><strong>Effective Date:</strong> April 3, 2026</p>
 <hr/>
@@ -883,7 +1010,8 @@ const LEGAL_CONTENT = {
 <p>We do <strong>not</strong> sell data. May share only if required by law.</p>
 <h3>5. Changes</h3>
 <p>Policy may update. Continued use = acceptance.</p>` },
-  terms: { html: `
+  terms: {
+    html: `
 <h2>Terms and Conditions</h2>
 <p><strong>Effective Date:</strong> April 3, 2026</p>
 <hr/>
@@ -927,6 +1055,28 @@ legalModal?.addEventListener("click", (e) => { if (e.target === legalModal) clos
 // ══════════════════════════════════════════════════════════════════════════════
 showHome();
 
+// ── Fetch site config (support email from env) ────────────────────────────────
+(async function loadSiteConfig() {
+  try {
+    const res = await fetch("/api/config");
+    if (!res.ok) return;
+    const cfg = await res.json();
+    if (cfg.supportEmail) {
+      const emailBtn = document.querySelector(".support-email-btn");
+      if (emailBtn) {
+        emailBtn.href = `mailto:${cfg.supportEmail}`;
+        // Update the text node (keep the SVG icon)
+        const textNodes = [...emailBtn.childNodes].filter(n => n.nodeType === Node.TEXT_NODE);
+        if (textNodes.length) {
+          textNodes[textNodes.length - 1].textContent = ` ${cfg.supportEmail}`;
+        } else {
+          emailBtn.append(` ${cfg.supportEmail}`);
+        }
+      }
+    }
+  } catch { /* fallback to hardcoded email in HTML */ }
+})();
+
 // ══════════════════════════════════════════════════════════════════════════════
 // DOODLE ENGINE
 // Handles: desktop left/right panels + mobile doodle screen
@@ -938,26 +1088,26 @@ showHome();
 
 // ── Brush state (single source of truth for both desktop + mobile) ────────────
 const brush = {
-  type:    "round",   // round | square | spray | eraser
-  size:    6,
-  color:   "#6c4ff7",
+  type: "round",   // round | square | spray | eraser
+  size: 6,
+  color: "#6c4ff7",
   opacity: 1.0,
-  glow:    false,
-  shadow:  false,
+  glow: false,
+  shadow: false,
 };
 
 // ── Canvas references ─────────────────────────────────────────────────────────
-const myCanvasD       = document.getElementById("myCanvas");          // desktop my
-const partnerCanvasD  = document.getElementById("partnerCanvas");     // desktop partner
-const myCanvasM       = document.getElementById("myCanvasMobile");    // mobile my
-const partnerCanvasM  = document.getElementById("partnerCanvasMobile");// mobile partner
+const myCanvasD = document.getElementById("myCanvas");          // desktop my
+const partnerCanvasD = document.getElementById("partnerCanvas");     // desktop partner
+const myCanvasM = document.getElementById("myCanvasMobile");    // mobile my
+const partnerCanvasM = document.getElementById("partnerCanvasMobile");// mobile partner
 
 // ── Drawing state ─────────────────────────────────────────────────────────────
-let isDrawing      = false;
-let lastX          = 0;
-let lastY          = 0;
-let strokePoints   = [];   // buffer current stroke for batched emit
-let emitTimer      = null;
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+let strokePoints = [];   // buffer current stroke for batched emit
+let emitTimer = null;
 
 // ── Helpers: get CSS variable resolved value ──────────────────────────────────
 function getCssVar(name) {
@@ -976,7 +1126,7 @@ function resizeCanvas(canvas) {
   if (rect.width < 1 || rect.height < 1) return;
   // Save existing drawing
   const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-  canvas.width  = rect.width  * window.devicePixelRatio;
+  canvas.width = rect.width * window.devicePixelRatio;
   canvas.height = rect.height * window.devicePixelRatio;
   const ctx = canvas.getContext("2d");
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -985,8 +1135,8 @@ function resizeCanvas(canvas) {
 
 function initCanvas(canvas) {
   if (!canvas) return;
-  const rect  = canvas.getBoundingClientRect();
-  canvas.width  = rect.width  * window.devicePixelRatio;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
   canvas.height = rect.height * window.devicePixelRatio;
   const ctx = canvas.getContext("2d");
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
@@ -1010,16 +1160,16 @@ function reinitAllCanvases() {
 
 // ── Apply brush effects to a context ─────────────────────────────────────────
 function applyEffects(ctx, color, size) {
-  ctx.shadowBlur   = 0;
-  ctx.shadowColor  = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = "transparent";
 
   if (brush.glow && brush.type !== "eraser") {
-    ctx.shadowBlur  = size * 3;
+    ctx.shadowBlur = size * 3;
     ctx.shadowColor = color;
   }
   if (brush.shadow && !brush.glow && brush.type !== "eraser") {
-    ctx.shadowBlur    = size * 1.5;
-    ctx.shadowColor   = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = size * 1.5;
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
     ctx.shadowOffsetX = size * 0.5;
     ctx.shadowOffsetY = size * 0.5;
   }
@@ -1047,20 +1197,20 @@ function renderSegment(canvas, seg) {
 
   ctx.globalCompositeOperation = "source-over";
   ctx.strokeStyle = seg.color;
-  ctx.fillStyle   = seg.color;
-  ctx.lineCap     = seg.brushType === "square" ? "square" : "round";
-  ctx.lineJoin    = "round";
-  ctx.lineWidth   = seg.size ?? 6;
+  ctx.fillStyle = seg.color;
+  ctx.lineCap = seg.brushType === "square" ? "square" : "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = seg.size ?? 6;
 
   // Apply glow / shadow
-  ctx.shadowBlur  = 0;
+  ctx.shadowBlur = 0;
   ctx.shadowColor = "transparent";
   if (seg.glow) {
-    ctx.shadowBlur  = (seg.size ?? 6) * 3;
+    ctx.shadowBlur = (seg.size ?? 6) * 3;
     ctx.shadowColor = seg.color;
   } else if (seg.shadow) {
-    ctx.shadowBlur    = (seg.size ?? 6) * 1.5;
-    ctx.shadowColor   = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = (seg.size ?? 6) * 1.5;
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
     ctx.shadowOffsetX = (seg.size ?? 6) * 0.5;
     ctx.shadowOffsetY = (seg.size ?? 6) * 0.5;
   }
@@ -1068,12 +1218,12 @@ function renderSegment(canvas, seg) {
   if (seg.brushType === "spray") {
     // Spray: random dots around the point
     const density = Math.max(6, (seg.size ?? 6) * 2);
-    const radius  = (seg.size ?? 6) * 1.8;
+    const radius = (seg.size ?? 6) * 1.8;
     for (let i = 0; i < density; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const r     = Math.random() * radius;
-      const sx    = seg.x2 + Math.cos(angle) * r;
-      const sy    = seg.y2 + Math.sin(angle) * r;
+      const r = Math.random() * radius;
+      const sx = seg.x2 + Math.cos(angle) * r;
+      const sy = seg.y2 + Math.sin(angle) * r;
       ctx.beginPath();
       ctx.arc(sx, sy, 1, 0, Math.PI * 2);
       ctx.fill();
@@ -1091,7 +1241,7 @@ function renderSegment(canvas, seg) {
 // ── Get normalised coords from pointer/touch event ────────────────────────────
 function getCoords(canvas, e) {
   const rect = canvas.getBoundingClientRect();
-  const src  = e.touches ? e.touches[0] : e;
+  const src = e.touches ? e.touches[0] : e;
   return {
     x: src.clientX - rect.left,
     y: src.clientY - rect.top,
@@ -1102,13 +1252,13 @@ function getCoords(canvas, e) {
 function flushStroke() {
   if (strokePoints.length < 1) return;
   socket.emit("drawStroke", {
-    points:    strokePoints,
-    color:     brush.type === "eraser" ? "#transparent" : brush.color,
-    size:      brush.size,
+    points: strokePoints,
+    color: brush.type === "eraser" ? "#transparent" : brush.color,
+    size: brush.size,
     brushType: brush.type,
-    opacity:   brush.opacity,
-    glow:      brush.glow,
-    shadow:    brush.shadow,
+    opacity: brush.opacity,
+    glow: brush.glow,
+    shadow: brush.shadow,
   });
   strokePoints = [];
 }
@@ -1122,7 +1272,7 @@ function onDrawStart(canvas, e) {
   strokePoints = [{ x1: x, y1: y, x2: x, y2: y }];
 
   // Auto-retract toolbar while drawing
-  const panel  = canvas.closest(".draw-panel-left, .doodle-pane-top");
+  const panel = canvas.closest(".draw-panel-left, .doodle-pane-top");
   if (panel) panel.classList.add("drawing");
 }
 
@@ -1133,12 +1283,12 @@ function onDrawMove(canvas, e) {
 
   const seg = {
     x1: lastX, y1: lastY, x2: x, y2: y,
-    color:     brush.type === "eraser" ? null : brush.color,
-    size:      brush.size,
+    color: brush.type === "eraser" ? null : brush.color,
+    size: brush.size,
     brushType: brush.type,
-    opacity:   brush.opacity,
-    glow:      brush.glow,
-    shadow:    brush.shadow,
+    opacity: brush.opacity,
+    glow: brush.glow,
+    shadow: brush.shadow,
   };
 
   renderSegment(canvas, seg);
@@ -1170,13 +1320,13 @@ function onDrawEnd(canvas) {
 // ── Attach draw listeners to a canvas ────────────────────────────────────────
 function attachDrawListeners(canvas) {
   if (!canvas) return;
-  canvas.addEventListener("mousedown",  e => onDrawStart(canvas, e));
-  canvas.addEventListener("mousemove",  e => onDrawMove(canvas, e));
-  canvas.addEventListener("mouseup",    () => onDrawEnd(canvas));
+  canvas.addEventListener("mousedown", e => onDrawStart(canvas, e));
+  canvas.addEventListener("mousemove", e => onDrawMove(canvas, e));
+  canvas.addEventListener("mouseup", () => onDrawEnd(canvas));
   canvas.addEventListener("mouseleave", () => onDrawEnd(canvas));
   canvas.addEventListener("touchstart", e => onDrawStart(canvas, e), { passive: false });
-  canvas.addEventListener("touchmove",  e => onDrawMove(canvas, e),  { passive: false });
-  canvas.addEventListener("touchend",   () => onDrawEnd(canvas));
+  canvas.addEventListener("touchmove", e => onDrawMove(canvas, e), { passive: false });
+  canvas.addEventListener("touchend", () => onDrawEnd(canvas));
 }
 
 // ── Incoming draw stroke from partner ────────────────────────────────────────
@@ -1189,12 +1339,12 @@ function replayStroke(data, canvas) {
   for (const pt of data.points) {
     renderSegment(canvas, {
       x1: pt.x1, y1: pt.y1, x2: pt.x2, y2: pt.y2,
-      color:     data.color,
-      size:      data.size,
+      color: data.color,
+      size: data.size,
       brushType: data.brushType,
-      opacity:   data.opacity,
-      glow:      data.glow,
-      shadow:    data.shadow,
+      opacity: data.opacity,
+      glow: data.glow,
+      shadow: data.shadow,
     });
   }
 }
@@ -1237,19 +1387,101 @@ socket.on("matched", () => {
 });
 
 // ── Toolbar wiring — DESKTOP ──────────────────────────────────────────────────
-const drawToolbarD   = document.getElementById("drawToolbar");
+const drawToolbarD = document.getElementById("drawToolbar");
 const toolbarToggleD = document.getElementById("drawToolbarToggle");
 
+// Make toolbar floating on open
 toolbarToggleD?.addEventListener("click", (e) => {
   e.stopPropagation();
-  drawToolbarD?.classList.toggle("hidden");
-});
-// Close toolbar when clicking outside
-document.addEventListener("click", (e) => {
-  if (!drawToolbarD?.contains(e.target) && e.target !== toolbarToggleD) {
-    drawToolbarD?.classList.add("hidden");
+  if (drawToolbarD) {
+    const isHidden = drawToolbarD.classList.contains("hidden");
+    if (isHidden) {
+      drawToolbarD.classList.remove("hidden");
+      drawToolbarD.classList.add("floating");
+      // Position near the toggle button if not already positioned by drag
+      if (!drawToolbarD.dataset.dragged) {
+        const panel = document.getElementById("drawPanelLeft");
+        if (panel) {
+          const rect = panel.getBoundingClientRect();
+          drawToolbarD.style.left = (rect.right + 8) + "px";
+          drawToolbarD.style.top = (rect.top + 40) + "px";
+        }
+      }
+    } else {
+      drawToolbarD.classList.add("hidden");
+      drawToolbarD.classList.remove("floating");
+    }
   }
 });
+
+// Close toolbar when clicking outside (but not when clicking inside it)
+document.addEventListener("click", (e) => {
+  if (drawToolbarD && !drawToolbarD.classList.contains("hidden") &&
+    !drawToolbarD.contains(e.target) && e.target !== toolbarToggleD &&
+    !toolbarToggleD?.contains(e.target)) {
+    drawToolbarD.classList.add("hidden");
+    drawToolbarD.classList.remove("floating");
+  }
+});
+
+// ── Draggable Drawing Toolbar ────────────────────────────────────────────────
+(function initDraggableToolbar() {
+  const toolbar = document.getElementById("drawToolbar");
+  const handle = document.getElementById("dtDragHandle");
+  if (!toolbar || !handle) return;
+
+  let isDragging = false;
+  let offsetX = 0, offsetY = 0;
+
+  handle.addEventListener("mousedown", startDrag);
+  handle.addEventListener("touchstart", startDrag, { passive: false });
+
+  function startDrag(e) {
+    // Only if toolbar is floating
+    if (!toolbar.classList.contains("floating")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = true;
+    document.body.classList.add("toolbar-dragging");
+
+    const src = e.touches ? e.touches[0] : e;
+    const rect = toolbar.getBoundingClientRect();
+    offsetX = src.clientX - rect.left;
+    offsetY = src.clientY - rect.top;
+
+    document.addEventListener("mousemove", onDrag);
+    document.addEventListener("mouseup", endDrag);
+    document.addEventListener("touchmove", onDrag, { passive: false });
+    document.addEventListener("touchend", endDrag);
+  }
+
+  function onDrag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const src = e.touches ? e.touches[0] : e;
+    let newX = src.clientX - offsetX;
+    let newY = src.clientY - offsetY;
+
+    // Clamp to viewport
+    const maxX = window.innerWidth - toolbar.offsetWidth;
+    const maxY = window.innerHeight - 40; // keep at least handle visible
+    newX = Math.max(0, Math.min(newX, maxX));
+    newY = Math.max(0, Math.min(newY, maxY));
+
+    toolbar.style.left = newX + "px";
+    toolbar.style.top = newY + "px";
+    toolbar.dataset.dragged = "true";
+  }
+
+  function endDrag() {
+    isDragging = false;
+    document.body.classList.remove("toolbar-dragging");
+    document.removeEventListener("mousemove", onDrag);
+    document.removeEventListener("mouseup", endDrag);
+    document.removeEventListener("touchmove", onDrag);
+    document.removeEventListener("touchend", endDrag);
+  }
+})();
 
 // Sync brush type buttons — desktop
 document.querySelectorAll("[data-brush]").forEach(btn => {
@@ -1267,7 +1499,7 @@ document.querySelectorAll("[data-brush]").forEach(btn => {
 
 // Brush size
 const brushSizeSlider = document.getElementById("brushSize");
-const brushSizeVal    = document.getElementById("brushSizeVal");
+const brushSizeVal = document.getElementById("brushSizeVal");
 brushSizeSlider?.addEventListener("input", () => {
   brush.size = Number(brushSizeSlider.value);
   if (brushSizeVal) brushSizeVal.textContent = brush.size;
@@ -1298,7 +1530,7 @@ document.querySelectorAll(".dt-swatch").forEach(btn => {
 
 // Opacity
 const brushOpacitySlider = document.getElementById("brushOpacity");
-const brushOpacityVal    = document.getElementById("brushOpacityVal");
+const brushOpacityVal = document.getElementById("brushOpacityVal");
 brushOpacitySlider?.addEventListener("input", () => {
   brush.opacity = Number(brushOpacitySlider.value) / 100;
   if (brushOpacityVal) brushOpacityVal.textContent = brushOpacitySlider.value;
@@ -1317,7 +1549,7 @@ document.getElementById("effectShadow")?.addEventListener("change", e => {
 });
 
 // ── Toolbar wiring — MOBILE ───────────────────────────────────────────────────
-const drawToolbarM   = document.getElementById("drawToolbarMobile");
+const drawToolbarM = document.getElementById("drawToolbarMobile");
 const toolbarToggleM = document.getElementById("drawToolbarToggleMobile");
 
 toolbarToggleM?.addEventListener("click", (e) => {
@@ -1343,7 +1575,7 @@ document.querySelectorAll("[data-brush-m]").forEach(btn => {
 document.getElementById("brushSizeMobile")?.addEventListener("input", e => {
   brush.size = Number(e.target.value);
   if (brushSizeSlider) brushSizeSlider.value = brush.size;
-  if (brushSizeVal)    brushSizeVal.textContent = brush.size;
+  if (brushSizeVal) brushSizeVal.textContent = brush.size;
 });
 
 // Mobile colour
@@ -1393,6 +1625,7 @@ function initDesktopDoodle() {
   attachDrawListeners(myCanvasD);
   // Start toolbar hidden
   drawToolbarD?.classList.add("hidden");
+  drawToolbarD?.classList.remove("floating");
 }
 
 // Reinit on resize (canvas dimensions must match layout)
@@ -1409,3 +1642,98 @@ const chatScreenObserver = new MutationObserver(() => {
   }
 });
 if (chatScreen) chatScreenObserver.observe(chatScreen, { attributes: true, attributeFilter: ["class"] });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SASH / SPLIT BAR — Resizable Panels
+// Allows dragging sash dividers to resize the left drawing panel, center chat,
+// and right drawing panel in the 3-column chat layout.
+// ══════════════════════════════════════════════════════════════════════════════
+(function initSashResize() {
+  const sashLeft = document.getElementById("sashLeft");
+  const sashRight = document.getElementById("sashRight");
+  const panelLeft = document.getElementById("drawPanelLeft");
+  const panelRight = document.getElementById("drawPanelRight");
+  const chatApp = document.getElementById("chatApp");
+  const chatLayout = panelLeft?.parentElement;
+
+  if (!sashLeft || !sashRight || !panelLeft || !panelRight || !chatApp || !chatLayout) return;
+
+  const MIN_PANEL = 150;     // minimum panel width in px
+  const MIN_CHAT = 320;     // minimum chat width in px
+
+  let activeSash = null;
+  let startX = 0;
+  let startLeftW = 0;
+  let startRightW = 0;
+
+  function onSashDown(sashId, e) {
+    e.preventDefault();
+    activeSash = sashId;
+    const src = e.touches ? e.touches[0] : e;
+    startX = src.clientX;
+    startLeftW = panelLeft.getBoundingClientRect().width;
+    startRightW = panelRight.getBoundingClientRect().width;
+
+    document.body.classList.add("sash-dragging");
+    document.getElementById(sashId)?.classList.add("active");
+
+    // Switch panels to pixel widths (remove flex basis)
+    panelLeft.style.flex = `0 0 ${startLeftW}px`;
+    panelRight.style.flex = `0 0 ${startRightW}px`;
+
+    document.addEventListener("mousemove", onSashMove);
+    document.addEventListener("mouseup", onSashUp);
+    document.addEventListener("touchmove", onSashMove, { passive: false });
+    document.addEventListener("touchend", onSashUp);
+  }
+
+  function onSashMove(e) {
+    if (!activeSash) return;
+    e.preventDefault();
+    const src = e.touches ? e.touches[0] : e;
+    const dx = src.clientX - startX;
+    const layoutW = chatLayout.getBoundingClientRect().width;
+    const sashTotalW = 12; // two sashes × 6px
+
+    if (activeSash === "sashLeft") {
+      // Dragging left sash: resize left panel
+      let newLeftW = startLeftW + dx;
+      const maxLeft = layoutW - startRightW - MIN_CHAT - sashTotalW;
+      newLeftW = Math.max(MIN_PANEL, Math.min(newLeftW, maxLeft));
+      panelLeft.style.flex = `0 0 ${newLeftW}px`;
+    } else {
+      // Dragging right sash: resize right panel
+      let newRightW = startRightW - dx;
+      const maxRight = layoutW - startLeftW - MIN_CHAT - sashTotalW;
+      newRightW = Math.max(MIN_PANEL, Math.min(newRightW, maxRight));
+      panelRight.style.flex = `0 0 ${newRightW}px`;
+    }
+
+    // Reinit canvases after layout change
+    clearTimeout(resizeDebounce);
+    resizeDebounce = setTimeout(() => {
+      reinitAllCanvases();
+    }, 100);
+  }
+
+  function onSashUp() {
+    if (!activeSash) return;
+    document.getElementById(activeSash)?.classList.remove("active");
+    activeSash = null;
+    document.body.classList.remove("sash-dragging");
+    document.removeEventListener("mousemove", onSashMove);
+    document.removeEventListener("mouseup", onSashUp);
+    document.removeEventListener("touchmove", onSashMove);
+    document.removeEventListener("touchend", onSashUp);
+
+    // Final canvas reinit
+    reinitAllCanvases();
+  }
+
+  // Attach listeners
+  sashLeft.addEventListener("mousedown", e => onSashDown("sashLeft", e));
+  sashLeft.addEventListener("touchstart", e => onSashDown("sashLeft", e), { passive: false });
+  sashRight.addEventListener("mousedown", e => onSashDown("sashRight", e));
+  sashRight.addEventListener("touchstart", e => onSashDown("sashRight", e), { passive: false });
+})();
+

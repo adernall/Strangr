@@ -400,6 +400,13 @@ app.get("/stats", (_req, res) => {
   });
 });
 
+// ── Site config (exposes env vars to frontend) ────────────────────────────────
+app.get("/api/config", (_req, res) => {
+  res.json({
+    supportEmail: process.env.SUPPORT_EMAIL || "support@strangr.app",
+  });
+});
+
 // ── /report HTTP (UNCHANGED endpoint, now wired to moderation module) ─────────
 app.post("/report", httpLimiter("report"), (req, res) => {
   const { reportedSocketId, reason } = req.body || {};

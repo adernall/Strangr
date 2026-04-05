@@ -305,9 +305,9 @@
               <div class="faq-a">Create a room to get a code, share with a friend. They enter the code to join privately.</div>
             </div>
           </div>
-          <a href="/cdn-cgi/l/email-protection#5724222727382523172423253639302579362727" class="support-email-btn">
+          <a href="mailto:support@strangr.app" class="support-email-btn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            <span class="__cf_email__" data-cfemail="13606663637c616753606761727d74613d726363">[email&#160;protected]</span>
+            support@strangr.app
           </a>
         </div>
       </div>
@@ -366,8 +366,13 @@
         </svg>
       </button>
 
-      <!-- Draw toolbar sidebar -->
+      <!-- Draw toolbar sidebar (draggable) -->
       <div class="draw-toolbar" id="drawToolbar">
+        <!-- Drag handle -->
+        <div class="dt-drag-handle" id="dtDragHandle" title="Drag to move">
+          <span class="dt-drag-dots">⠿</span>
+          <span class="dt-drag-label">Drawing Tools</span>
+        </div>
         <!-- Brush type -->
         <div class="dt-section">
           <div class="dt-label">Brush</div>
@@ -436,6 +441,11 @@
           <button class="dt-clear-btn" id="btnClearCanvas">Clear canvas</button>
         </div>
       </div>
+    </div>
+
+    <!-- SASH: left resize handle -->
+    <div class="sash" id="sashLeft" title="Drag to resize">
+      <div class="sash-grip"></div>
     </div>
 
     <!-- CENTER: Chat (existing) -->
@@ -515,6 +525,11 @@
       </div>
 
     </div><!-- end chat-app -->
+
+    <!-- SASH: right resize handle -->
+    <div class="sash" id="sashRight" title="Drag to resize">
+      <div class="sash-grip"></div>
+    </div>
 
     <!-- RIGHT PANEL: Partner's drawing preview (desktop only) -->
     <div class="draw-panel draw-panel-right" id="drawPanelRight">

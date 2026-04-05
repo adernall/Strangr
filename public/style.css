@@ -894,6 +894,44 @@ body {
   display: flex; align-items: center; justify-content: center;
 }
 
+/* Drop overlay for drag & drop images */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(6,214,245,.08);
+  border: 2.5px dashed var(--cyan);
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, background .2s;
+}
+.drop-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+  background: rgba(6,214,245,.12);
+}
+[data-theme="dark"] .drop-overlay.active {
+  background: rgba(6,214,245,.08);
+}
+.drop-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--cyan);
+  font-size: 15px;
+  font-weight: 600;
+  animation: dropPulse 1.5s ease-in-out infinite;
+}
+@keyframes dropPulse {
+  0%,100% { transform: scale(1); opacity: .8; }
+  50%     { transform: scale(1.05); opacity: 1; }
+}
+
 /* ══════════════════════════════════════════════════════
    MODALS
 ══════════════════════════════════════════════════════ */
@@ -1209,11 +1247,15 @@ body {
   transform: translateX(-100%);
   box-shadow: none;
 }
+.draw-toolbar.floating.hidden {
+  display: none;
+  transform: none;
+}
 .draw-toolbar::-webkit-scrollbar { width: 3px; }
 .draw-toolbar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
 
-/* Toolbar auto-retract when drawing (JS adds .drawing to panel) */
-.draw-panel-left.drawing .draw-toolbar { transform: translateX(-100%); }
+/* Toolbar auto-retract when drawing (JS adds .drawing to panel) — only non-floating */
+.draw-panel-left.drawing .draw-toolbar:not(.floating) { transform: translateX(-100%); }
 
 .dt-section {
   display: flex; flex-direction: column; gap: 8px;
@@ -1249,6 +1291,7 @@ body {
 .dt-range {
   width: 100%;
   -webkit-appearance: none;
+  appearance: none;
   height: 4px;
   border-radius: 999px;
   background: var(--border2);
@@ -1412,6 +1455,112 @@ body {
 .dt-range-wide { flex: 1; min-width: 80px; }
 .dt-toggle-compact { gap: 4px; font-size: 12px; }
 
+/* ── Draw toolbar — Drag handle ─────────────────────── */
+.dt-drag-handle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  margin: -16px -12px 0 -12px;
+  cursor: grab;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 14px 14px 0 0;
+  transition: background .15s;
+}
+.dt-drag-handle:hover { background: var(--bg-section); }
+.dt-drag-handle:active { cursor: grabbing; }
+.dt-drag-dots {
+  font-size: 16px;
+  color: var(--text3);
+  line-height: 1;
+  letter-spacing: 2px;
+}
+.dt-drag-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text3);
+}
+
+/* ── Draw toolbar — Floating/Detached mode ─────────── */
+.draw-toolbar.floating {
+  position: fixed;
+  top: 80px;
+  left: 290px;
+  width: 210px;
+  height: auto;
+  max-height: 80vh;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border2);
+  box-shadow: 0 12px 40px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.05);
+  z-index: 50;
+  transform: none !important;
+  overflow-y: auto;
+  animation: toolbarFloat .25s ease-out;
+}
+[data-theme="dark"] .draw-toolbar.floating {
+  box-shadow: 0 12px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
+}
+@keyframes toolbarFloat {
+  from { opacity: 0; transform: scale(.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.draw-toolbar.floating .dt-drag-handle {
+  margin: -16px -12px 0 -12px;
+  border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+}
+
+/* ══════════════════════════════════════════════════════
+   SASH / SPLIT BAR — resizable panel dividers
+══════════════════════════════════════════════════════ */
+.sash {
+  flex: 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  position: relative;
+  z-index: 5;
+  transition: background .15s, border-color .15s;
+  user-select: none;
+}
+.sash:hover,
+.sash.active {
+  background: var(--cyan);
+  background: linear-gradient(180deg, rgba(6,214,245,.15), rgba(108,79,247,.15));
+  border-color: var(--cyan);
+}
+
+.sash-grip {
+  width: 4px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--border2);
+  position: relative;
+  transition: background .15s, height .15s, width .15s;
+}
+.sash:hover .sash-grip,
+.sash.active .sash-grip {
+  background: var(--cyan);
+  height: 48px;
+  width: 4px;
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+
+/* ── Sash — hide on mobile where panels are hidden ──── */
+@media (max-width: 1100px) {
+  .sash { display: none; }
+}
+
 /* ══════════════════════════════════════════════════════
    RESPONSIVE — show/hide panels
 ══════════════════════════════════════════════════════ */
@@ -1430,4 +1579,24 @@ body {
 /* On very wide screens: give panels a bit more room */
 @media (min-width: 1400px) {
   .draw-panel { flex: 0 0 320px; }
+}
+
+/* ── Body class while sash-dragging (prevent text selection) ─ */
+body.sash-dragging {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+body.sash-dragging * {
+  cursor: col-resize !important;
+}
+
+/* ── Body class while toolbar-dragging ───────────────── */
+body.toolbar-dragging {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+body.toolbar-dragging * {
+  cursor: grabbing !important;
 }
