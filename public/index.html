@@ -305,10 +305,10 @@
               <div class="faq-a">Create a room to get a code, share with a friend. They enter the code to join privately.</div>
             </div>
           </div>
-          <a href="mailto:support@strangr.app" class="support-email-btn">
+          <button class="support-email-btn" id="btnSupportEmail" type="button">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            support@strangr.app
-          </a>
+            <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="54272124243b262014272026353a33267a352424">[email&#160;protected]</a>
+          </button>
         </div>
       </div>
     </div>
@@ -350,265 +350,93 @@
 
 <!-- ══════════════════ CHAT SCREEN ══════════════════ -->
 <div class="screen hidden" id="chatScreen">
+  <div class="chat-app" id="chatApp">
 
-  <!-- ── DESKTOP: 3-column wrapper ── -->
-  <div class="chat-layout">
-
-    <!-- LEFT PANEL: Your drawing canvas (desktop only) -->
-    <div class="draw-panel draw-panel-left" id="drawPanelLeft">
-      <div class="draw-panel-label">You're drawing</div>
-      <canvas id="myCanvas" class="draw-canvas"></canvas>
-
-      <!-- Floating toolbar trigger -->
-      <button class="draw-toolbar-toggle" id="drawToolbarToggle" title="Drawing tools" aria-label="Toggle drawing tools">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-        </svg>
-      </button>
-
-      <!-- Draw toolbar sidebar (draggable) -->
-      <div class="draw-toolbar" id="drawToolbar">
-        <!-- Drag handle -->
-        <div class="dt-drag-handle" id="dtDragHandle" title="Drag to move">
-          <span class="dt-drag-dots">⠿</span>
-          <span class="dt-drag-label">Drawing Tools</span>
-        </div>
-        <!-- Brush type -->
-        <div class="dt-section">
-          <div class="dt-label">Brush</div>
-          <div class="dt-brush-types">
-            <button class="dt-brush-btn active" data-brush="round" title="Round">
-              <svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor"/></svg>
-            </button>
-            <button class="dt-brush-btn" data-brush="square" title="Square">
-              <svg width="14" height="14" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg>
-            </button>
-            <button class="dt-brush-btn" data-brush="spray" title="Spray">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="14" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="15" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="17" r="1" fill="currentColor" stroke="none"/></svg>
-            </button>
-            <button class="dt-brush-btn" data-brush="eraser" title="Eraser">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 20H7L3 16l10-10 7 7-3.5 3.5"/><path d="M6.5 17.5l4-4"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Size -->
-        <div class="dt-section">
-          <div class="dt-label">Size <span id="brushSizeVal">6</span>px</div>
-          <input type="range" id="brushSize" class="dt-range" min="1" max="40" value="6" />
-        </div>
-
-        <!-- Colour wheel -->
-        <div class="dt-section">
-          <div class="dt-label">Colour</div>
-          <input type="color" id="brushColor" class="dt-color" value="#6c4ff7" />
-          <!-- Preset swatches -->
-          <div class="dt-swatches">
-            <button class="dt-swatch" style="background:#ef4444" data-color="#ef4444"></button>
-            <button class="dt-swatch" style="background:#f59e0b" data-color="#f59e0b"></button>
-            <button class="dt-swatch" style="background:#10b981" data-color="#10b981"></button>
-            <button class="dt-swatch" style="background:#06d6f5" data-color="#06d6f5"></button>
-            <button class="dt-swatch" style="background:#6c4ff7" data-color="#6c4ff7"></button>
-            <button class="dt-swatch" style="background:#ec4899" data-color="#ec4899"></button>
-            <button class="dt-swatch" style="background:#ffffff" data-color="#ffffff" style="border:1px solid #ccc"></button>
-            <button class="dt-swatch" style="background:#1a1a2e" data-color="#1a1a2e"></button>
-          </div>
-        </div>
-
-        <!-- Opacity -->
-        <div class="dt-section">
-          <div class="dt-label">Opacity <span id="brushOpacityVal">100</span>%</div>
-          <input type="range" id="brushOpacity" class="dt-range" min="10" max="100" value="100" />
-        </div>
-
-        <!-- Effects -->
-        <div class="dt-section">
-          <div class="dt-label">Effects</div>
-          <label class="dt-toggle-row">
-            <span>Glow</span>
-            <input type="checkbox" id="effectGlow" class="dt-checkbox" />
-            <span class="dt-toggle-track"><span class="dt-toggle-thumb"></span></span>
-          </label>
-          <label class="dt-toggle-row">
-            <span>Shadow</span>
-            <input type="checkbox" id="effectShadow" class="dt-checkbox" />
-            <span class="dt-toggle-track"><span class="dt-toggle-thumb"></span></span>
-          </label>
-        </div>
-
-        <!-- Actions -->
-        <div class="dt-section">
-          <button class="dt-clear-btn" id="btnClearCanvas">Clear canvas</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SASH: left resize handle -->
-    <div class="sash" id="sashLeft" title="Drag to resize">
-      <div class="sash-grip"></div>
-    </div>
-
-    <!-- CENTER: Chat (existing) -->
-    <div class="chat-app" id="chatApp">
-
-      <header class="chat-header">
-        <button class="ch-back" id="btnBack" aria-label="Back">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div class="ch-center">
-          <span class="ch-logo">Strangr</span>
-          <span id="roomTag" class="room-tag hidden"></span>
-        </div>
-        <div class="ch-right">
-          <div class="ch-status-wrap">
-            <div id="statusDot" class="status-dot waiting"></div>
-            <span id="statusText" class="ch-status-text">Finding…</span>
-          </div>
-          <div class="live-pill ch-pill">
-            <span class="live-dot"></span>
-            <span id="onlineCount">—</span>
-          </div>
-        </div>
-      </header>
-
-      <main class="chat-main">
-        <div class="messages" id="messages" role="log" aria-live="polite">
-          <div class="empty-state" id="emptyState">
-            <div class="es-icon">⚡</div>
-            <p>Connecting you to a stranger…</p>
-          </div>
-        </div>
-        <div class="typing-indicator hidden" id="typingIndicator" aria-live="polite">
-          <div class="typing-dots"><span></span><span></span><span></span></div>
-          <span class="typing-label" id="typingLabel">Stranger is typing</span>
-        </div>
-      </main>
-
-      <div class="chat-input-area">
-        <div id="imgPreviewSlot"></div>
-        <div class="input-row">
-          <input type="file" id="imageInput" accept="image/*" hidden />
-          <button class="ci-btn ci-img" id="btnImg" disabled title="Send image" aria-label="Send image">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          </button>
-          <textarea id="messageInput" class="message-input" placeholder="Type a message…" rows="1" maxlength="500" disabled aria-label="Message"></textarea>
-          <button id="sendBtn" class="ci-btn ci-send" disabled aria-label="Send">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
-        </div>
-        <div class="input-meta">
-          <span class="char-count" id="charCount">0 / 500</span>
-          <div class="input-actions">
-            <button class="ci-btn ci-ig-add" id="btnIgAdd" title="Share Instagram" aria-label="Add Instagram">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-            <button class="ci-btn ci-ig-share hidden" id="btnIgShare" title="Send Instagram" aria-label="Send Instagram">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#igG)" stroke-width="2" stroke-linecap="round">
-                <defs><linearGradient id="igG" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f9ce34"/><stop offset="33%" stop-color="#ee2a7b"/><stop offset="100%" stop-color="#6228d7"/></linearGradient></defs>
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="url(#igG)"/>
-              </svg>
-            </button>
-            <!-- Mobile doodle button -->
-            <button class="ci-btn ci-doodle" id="btnDoodle" title="Doodle" aria-label="Open doodle">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            </button>
-            <button id="skipBtn" class="btn-skip">Next stranger →</button>
-            <button id="btnReport" class="btn-report hidden" title="Report this user" aria-label="Report user">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              Report
-            </button>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- end chat-app -->
-
-    <!-- SASH: right resize handle -->
-    <div class="sash" id="sashRight" title="Drag to resize">
-      <div class="sash-grip"></div>
-    </div>
-
-    <!-- RIGHT PANEL: Partner's drawing preview (desktop only) -->
-    <div class="draw-panel draw-panel-right" id="drawPanelRight">
-      <div class="draw-panel-label">Stranger's canvas</div>
-      <canvas id="partnerCanvas" class="draw-canvas draw-canvas-readonly"></canvas>
-      <div class="draw-panel-empty" id="partnerCanvasEmpty">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        <span>Waiting for stranger to draw…</span>
-      </div>
-    </div>
-
-  </div><!-- end chat-layout -->
-
-</div><!-- end chatScreen -->
-
-
-<!-- ══════════════════ MOBILE DOODLE SCREEN ══════════════════ -->
-<div class="screen hidden" id="doodleScreen">
-  <div class="doodle-app">
-
-    <header class="doodle-header">
-      <button class="ch-back" id="btnDoodleBack" aria-label="Back to chat">
+    <header class="chat-header">
+      <button class="ch-back" id="btnBack" aria-label="Back">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-      <span class="doodle-title">Doodle</span>
-      <button class="dt-clear-btn dt-clear-mobile" id="btnClearMobile">Clear</button>
-    </header>
-
-    <div class="doodle-body">
-      <!-- Your canvas (top) -->
-      <div class="doodle-pane doodle-pane-top">
-        <div class="doodle-pane-label">You</div>
-        <canvas id="myCanvasMobile" class="draw-canvas"></canvas>
-
-        <!-- Mobile toolbar toggle -->
-        <button class="draw-toolbar-toggle dtt-mobile" id="drawToolbarToggleMobile" title="Tools">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-
-        <div class="draw-toolbar draw-toolbar-mobile" id="drawToolbarMobile">
-          <div class="dt-section dt-section-row">
-            <div class="dt-brush-types">
-              <button class="dt-brush-btn active" data-brush-m="round"><svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor"/></svg></button>
-              <button class="dt-brush-btn" data-brush-m="square"><svg width="14" height="14" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg></button>
-              <button class="dt-brush-btn" data-brush-m="spray"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="14" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="7" cy="15" r="1" fill="currentColor" stroke="none"/><circle cx="13" cy="17" r="1" fill="currentColor" stroke="none"/></svg></button>
-              <button class="dt-brush-btn" data-brush-m="eraser"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 20H7L3 16l10-10 7 7-3.5 3.5"/><path d="M6.5 17.5l4-4"/></svg></button>
-            </div>
-            <input type="color" id="brushColorMobile" class="dt-color" value="#6c4ff7" />
-          </div>
-          <div class="dt-section dt-section-row">
-            <span class="dt-label">Size</span>
-            <input type="range" id="brushSizeMobile" class="dt-range dt-range-wide" min="1" max="40" value="6" />
-            <label class="dt-toggle-row dt-toggle-compact">
-              <span>Glow</span>
-              <input type="checkbox" id="effectGlowMobile" class="dt-checkbox" />
-              <span class="dt-toggle-track"><span class="dt-toggle-thumb"></span></span>
-            </label>
-            <label class="dt-toggle-row dt-toggle-compact">
-              <span>Shadow</span>
-              <input type="checkbox" id="effectShadowMobile" class="dt-checkbox" />
-              <span class="dt-toggle-track"><span class="dt-toggle-thumb"></span></span>
-            </label>
-          </div>
+      <div class="ch-center">
+        <span class="ch-logo">Strangr</span>
+        <span id="roomTag" class="room-tag hidden"></span>
+      </div>
+      <div class="ch-right">
+        <div class="ch-status-wrap">
+          <div id="statusDot" class="status-dot waiting"></div>
+          <span id="statusText" class="ch-status-text">Finding…</span>
+        </div>
+        <div class="live-pill ch-pill">
+          <span class="live-dot"></span>
+          <span id="onlineCount">—</span>
         </div>
       </div>
+    </header>
 
-      <!-- Partner canvas (bottom) -->
-      <div class="doodle-pane doodle-pane-bottom">
-        <div class="doodle-pane-label">Stranger</div>
-        <canvas id="partnerCanvasMobile" class="draw-canvas draw-canvas-readonly"></canvas>
-        <div class="draw-panel-empty" id="partnerMobileEmpty">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          <span>Waiting…</span>
+    <main class="chat-main">
+      <div class="messages" id="messages" role="log" aria-live="polite">
+        <div class="empty-state" id="emptyState">
+          <div class="es-icon">⚡</div>
+          <p>Connecting you to a stranger…</p>
+        </div>
+      </div>
+      <div class="typing-indicator hidden" id="typingIndicator" aria-live="polite">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+        <span class="typing-label" id="typingLabel">Stranger is typing</span>
+      </div>
+    </main>
+
+    <!-- ── Question bar — sits between messages and input ── -->
+    <div class="qbar hidden" id="qbar" aria-live="polite">
+      <!-- Question mode -->
+      <div class="qbar-question" id="qbarQuestion">
+        <span class="qbar-label">Ask</span>
+        <button class="qbar-chip" id="qbarChip"></button>
+      </div>
+      <!-- Skip prompt mode -->
+      <div class="qbar-skip-prompt hidden" id="qbarSkipPrompt">
+        <span class="qbar-skip-text">Been quiet for a while…</span>
+        <button class="qbar-skip-btn" id="qbarSkipBtn">Skip this stranger?</button>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <div id="imgPreviewSlot"></div>
+      <div class="input-row">
+        <input type="file" id="imageInput" accept="image/*" hidden />
+        <button class="ci-btn ci-img" id="btnImg" disabled title="Send image" aria-label="Send image">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+        <textarea id="messageInput" class="message-input" placeholder="Type a message…" rows="1" maxlength="500" disabled aria-label="Message"></textarea>
+        <button id="sendBtn" class="ci-btn ci-send" disabled aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      <div class="input-meta">
+        <span class="char-count" id="charCount">0 / 500</span>
+        <div class="input-actions">
+          <button class="ci-btn ci-ig-add" id="btnIgAdd" title="Share Instagram" aria-label="Add Instagram">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="ci-btn ci-ig-share hidden" id="btnIgShare" title="Send Instagram" aria-label="Send Instagram">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#igG)" stroke-width="2" stroke-linecap="round">
+              <defs><linearGradient id="igG" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f9ce34"/><stop offset="33%" stop-color="#ee2a7b"/><stop offset="100%" stop-color="#6228d7"/></linearGradient></defs>
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="url(#igG)"/>
+            </svg>
+          </button>
+          <button id="skipBtn" class="btn-skip">Next stranger →</button>
+          <button id="btnReport" class="btn-report hidden" title="Report this user" aria-label="Report user">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Report
+          </button>
         </div>
       </div>
     </div>
 
   </div>
-</div>
+</div><!-- end chatScreen -->
 
 
 
@@ -686,7 +514,7 @@
       <button class="report-reason-btn" data-reason="other">
         <span class="rr-icon">⚠️</span> Other
       </button>
-    </div>
+        </div>
   </div>
 </div>
 
