@@ -1109,91 +1109,99 @@ body {
    QUESTION BAR
 ══════════════════════════════════════════════════════ */
 
-/* Container sits between messages and input, zero height when hidden */
 .qbar {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 4px;
-  height: 40px;
   overflow: hidden;
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity .25s ease, transform .25s ease, height .25s ease;
+  max-height: 48px;
+  transition: opacity .25s ease, max-height .25s ease;
+  position: relative;
 }
 .qbar.hidden {
   opacity: 0;
-  transform: translateY(6px);
-  height: 0;
+  max-height: 0;
   pointer-events: none;
 }
 
-/* ── Question mode ─────────────────────────────────── */
-.qbar-question {
+/* Horizontally scrollable chips row */
+.qbar-chips-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  animation: qbarSlideIn .22s ease-out;
+  gap: 6px;
+  padding: 6px 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+  scroll-behavior: smooth;
 }
-.qbar-question.hidden { display: none; }
+.qbar-chips-row::-webkit-scrollbar { display: none; }
 
-@keyframes qbarSlideIn {
-  from { opacity: 0; transform: translateX(-8px); }
-  to   { opacity: 1; transform: translateX(0); }
+/* Fade-out right edge to hint at scrollability */
+.qbar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 32px; height: 100%;
+  background: linear-gradient(to right, transparent, var(--bg));
+  pointer-events: none;
+  transition: background var(--transition);
 }
 
-.qbar-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--text3);
-  flex-shrink: 0;
-  font-family: var(--font-mono);
-}
-
+/* Individual question chip */
 .qbar-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  flex-shrink: 0;
   background: var(--bg-card);
   border: 1.5px solid var(--border2);
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
-  padding: 6px 14px;
+  padding: 5px 13px;
   border-radius: 999px;
   cursor: pointer;
-  transition: border-color .15s, background .15s, color .15s, transform .1s;
   white-space: nowrap;
+  transition: border-color .15s, background .15s, color .15s,
+              opacity .2s, transform .2s;
 }
 .qbar-chip:hover {
   border-color: var(--cyan);
   color: var(--cyan);
   background: rgba(0,196,232,.06);
-  transform: scale(1.02);
 }
-.qbar-chip:active { transform: scale(.98); }
+.qbar-chip:active { transform: scale(.97); }
 
-/* Arrow icon inside chip */
+/* Chip send arrow */
 .qbar-chip::after {
   content: "→";
-  font-size: 12px;
-  opacity: .6;
+  font-size: 11px;
+  opacity: .55;
 }
 
-/* ── Skip prompt mode ──────────────────────────────── */
+/* Chip removal animation */
+.qbar-chip.removing {
+  opacity: 0;
+  transform: scale(.85) translateY(-4px);
+  pointer-events: none;
+}
+
+/* Skip prompt */
 .qbar-skip-prompt {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  padding: 6px 4px;
   animation: qbarSlideIn .22s ease-out;
 }
 .qbar-skip-prompt.hidden { display: none; }
+
+@keyframes qbarSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 
 .qbar-skip-text {
   font-size: 12px;
@@ -1201,11 +1209,9 @@ body {
   font-style: italic;
   font-family: var(--font-mono);
 }
-
 .qbar-skip-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
   background: transparent;
   border: 1.5px solid rgba(245,158,11,.4);
   color: var(--warn);
@@ -1215,16 +1221,15 @@ body {
   padding: 5px 14px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background .15s, border-color .15s;
   white-space: nowrap;
+  transition: background .15s, border-color .15s;
 }
 .qbar-skip-btn:hover {
   background: rgba(245,158,11,.08);
   border-color: var(--warn);
 }
 
-/* ── Inline answer options inside chat bubble ────────
-   Shown below a received question message             */
+/* Inline answer choices inside received bubble */
 .msg-choices {
   display: flex;
   gap: 6px;
@@ -1251,7 +1256,6 @@ body {
   background: rgba(108,79,247,.06);
 }
 .msg-choice-btn:active { transform: scale(.97); }
-/* Disable after one is chosen */
 .msg-choices.answered .msg-choice-btn {
   opacity: .4;
   pointer-events: none;

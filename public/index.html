@@ -385,19 +385,16 @@
       </div>
     </main>
 
-    <!-- ── Question bar — sits between messages and input ── -->
-    <div class="qbar hidden" id="qbar" aria-live="polite">
-      <!-- Question mode -->
-      <div class="qbar-question" id="qbarQuestion">
-        <span class="qbar-label">Ask</span>
-        <button class="qbar-chip" id="qbarChip"></button>
-      </div>
-      <!-- Skip prompt mode -->
-      <div class="qbar-skip-prompt hidden" id="qbarSkipPrompt">
-        <span class="qbar-skip-text">Been quiet for a while…</span>
-        <button class="qbar-skip-btn" id="qbarSkipBtn">Skip this stranger?</button>
-      </div>
-    </div>
+    <!-- ── Question bar ── -->
+<div class="qbar hidden" id="qbar" aria-live="polite">
+  <!-- Question chips row (horizontally scrollable) -->
+  <div class="qbar-chips-row" id="qbarChipsRow"></div>
+  <!-- Skip prompt (shown on inactivity) -->
+  <div class="qbar-skip-prompt hidden" id="qbarSkipPrompt">
+    <span class="qbar-skip-text">Been quiet for a while…</span>
+    <button class="qbar-skip-btn" id="qbarSkipBtn">Skip this stranger?</button>
+  </div>
+</div>
 
     <div class="chat-input-area">
       <div id="imgPreviewSlot"></div>

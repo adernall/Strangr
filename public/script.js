@@ -936,66 +936,104 @@ showHome();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // QUESTION BAR MODULE
-// Self-contained — reads from existing sendMessage(), skipBtn, socket events.
-// No modifications to any existing code above.
+// All questions shown as horizontal scrollable chips.
+// Clicking a chip sends it instantly and removes it with animation.
+// Next chips slide left to fill the gap.
 // ══════════════════════════════════════════════════════════════════════════════
 (function QuestionBar() {
 
   // ── Question definitions ──────────────────────────────────────────────────
-  // choices: optional array → receiver sees clickable inline answers
   const QUESTIONS = [
-    { text: "Name?"                         },
-    { text: "Male or Female?",   choices: ["Male", "Female"]         },
-    { text: "Age?"                          },
-    { text: "From?"                         },
-    { text: "What do you do?"               },
-    { text: "Student or working?", choices: ["Student", "Working"]   },
-    { text: "What's your vibe?"             },
-    { text: "What are you doing right now?" },
-    { text: "Why are you here?"             },
-    { text: "Single or taken?",  choices: ["Single", "Taken"]        },
+    { text: "Name?"                          },
+    { text: "Male or Female?",  choices: ["Male", "Female"]       },
+    { text: "Age?"                           },
+    { text: "From?"                          },
+    { text: "What do you do?"                },
+    { text: "Student or working?", choices: ["Student", "Working"] },
+    { text: "What's your vibe?"              },
+    { text: "What are you doing right now?"  },
+    { text: "Why are you here?"              },
+    { text: "Single or taken?",  choices: ["Single", "Taken"]     },
   ];
 
-  // Questions that have choice answers — keyed by text for quick lookup
+  // Map question text → choices for incoming message detection
   const CHOICE_MAP = {};
   QUESTIONS.forEach(q => { if (q.choices) CHOICE_MAP[q.text] = q.choices; });
 
   // ── State ─────────────────────────────────────────────────────────────────
-  let qIndex        = 0;       // next question to show
-  let inactiveTimer = null;    // 10s inactivity timer
-  let barMode       = "none";  // "question" | "skip" | "none"
-  let sessionActive = false;   // true while in a chat
-  let waitingForAnswer = false;// true after we sent a question, waiting for stranger's reply
+  // We track which questions are still available as a Set of indices
+  let remaining      = [];   // array of question indices still in the bar
+  let inactiveTimer  = null;
+  let barMode        = "none"; // "questions" | "skip" | "none"
+  let sessionActive  = false;
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const qbar           = document.getElementById("qbar");
-  const qbarQuestion   = document.getElementById("qbarQuestion");
-  const qbarChip       = document.getElementById("qbarChip");
+  const qbarChipsRow   = document.getElementById("qbarChipsRow");
   const qbarSkipPrompt = document.getElementById("qbarSkipPrompt");
   const qbarSkipBtn    = document.getElementById("qbarSkipBtn");
-  const skipBtnEl      = document.getElementById("skipBtn");
-  const msgInputEl     = document.getElementById("messageInput");
 
-  if (!qbar) return; // element not found — bail silently
+  if (!qbar) return;
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  function showBar(mode) {
-    barMode = mode;
+  // ── Build chip elements for all remaining questions ───────────────────────
+  function buildChips() {
+    qbarChipsRow.innerHTML = "";
+    remaining.forEach(idx => {
+      const q   = QUESTIONS[idx];
+      const btn = document.createElement("button");
+      btn.className        = "qbar-chip";
+      btn.textContent      = q.text;
+      btn.dataset.qindex   = idx;
+      btn.addEventListener("click", () => handleChipClick(idx, btn));
+      qbarChipsRow.appendChild(btn);
+    });
+  }
+
+  // ── Handle chip click ─────────────────────────────────────────────────────
+  function handleChipClick(idx, btn) {
+    if (!connected) return;
+
+    const q = QUESTIONS[idx];
+
+    // Animate removal
+    btn.classList.add("removing");
+
+    setTimeout(() => {
+      // Remove from remaining list
+      remaining = remaining.filter(i => i !== idx);
+
+      // Send as normal message via existing system
+      socket.emit("message", q.text);
+      appendMessage("you", q.text, "text");
+
+      // Rebuild chips (remaining ones shift left naturally since DOM reflows)
+      buildChips();
+
+      // Hide bar if no more questions
+      if (remaining.length === 0) {
+        hideBar();
+      }
+
+      // Restart inactivity timer
+      startInactiveTimer();
+    }, 200); // matches .removing transition duration
+  }
+
+  // ── Show / hide bar ───────────────────────────────────────────────────────
+  function showQuestions() {
+    if (remaining.length === 0) return;
+    barMode = "questions";
     qbar.classList.remove("hidden");
+    qbarChipsRow.style.display = "flex";
+    qbarSkipPrompt.classList.add("hidden");
+    buildChips();
+  }
 
-    if (mode === "question") {
-      qbarQuestion.classList.remove("hidden");
-      qbarSkipPrompt.classList.add("hidden");
-      // Animate chip re-render
-      qbarChip.style.animation = "none";
-      requestAnimationFrame(() => {
-        qbarChip.style.animation = "";
-        qbarChip.classList.remove("hidden");
-      });
-    } else if (mode === "skip") {
-      qbarQuestion.classList.add("hidden");
-      qbarSkipPrompt.classList.remove("hidden");
-    }
+  function showSkipPrompt() {
+    barMode = "skip";
+    qbar.classList.remove("hidden");
+    qbarChipsRow.style.display = "none";
+    qbarSkipPrompt.classList.remove("hidden");
   }
 
   function hideBar() {
@@ -1004,11 +1042,12 @@ showHome();
     clearInactiveTimer();
   }
 
+  // ── Inactivity timer (10s → show skip prompt) ─────────────────────────────
   function startInactiveTimer() {
     clearInactiveTimer();
     inactiveTimer = setTimeout(() => {
       if (!sessionActive || !connected) return;
-      showBar("skip");
+      showSkipPrompt();
     }, 10_000);
   }
 
@@ -1017,120 +1056,58 @@ showHome();
     inactiveTimer = null;
   }
 
-  // Advance to and display the next question
-  function showNextQuestion() {
-    if (qIndex >= QUESTIONS.length) {
-      hideBar(); // all questions exhausted
-      return;
-    }
-    const q = QUESTIONS[qIndex];
-    qbarChip.textContent = q.text; // ::after pseudo adds "→"
-    showBar("question");
-    startInactiveTimer();
-  }
-
-  // Called whenever any message is sent (by us or after answer received)
-  function onMessageActivity() {
-    if (!sessionActive) return;
-    clearInactiveTimer();
-    // If skip prompt was showing, go back to question mode
-    if (barMode === "skip") {
-      showNextQuestion();
-      return;
-    }
-    // If we were showing a question, hide bar; next question shows after reply
-    if (barMode === "question") {
-      hideBar();
-    }
-    // Restart inactivity timer for next cycle
-    startInactiveTimer();
-  }
-
-  // ── Click: send question ──────────────────────────────────────────────────
-  qbarChip.addEventListener("click", () => {
-    if (!connected || qIndex >= QUESTIONS.length) return;
-    const q = QUESTIONS[qIndex];
-    // Use existing sendMessage text path via direct socket emit + appendMessage
-    // (avoids side-effects of filling textarea)
-    sendQuestionAsMessage(q.text);
-    qIndex++;
-    hideBar();
-    waitingForAnswer = true;
-    startInactiveTimer();
-  });
-
-  // ── Click: skip via skip prompt ───────────────────────────────────────────
+  // ── Skip prompt button ────────────────────────────────────────────────────
   qbarSkipBtn.addEventListener("click", () => {
     hideBar();
-    // Trigger existing skip logic
-    skipBtnEl?.click();
+    document.getElementById("skipBtn")?.click();
   });
 
-  // ── Send question using existing system ───────────────────────────────────
-  function sendQuestionAsMessage(text) {
-    if (!connected) return;
-    socket.emit("message", text);
-    appendMessage("you", text, "text");
+  // ── React to any sent message ─────────────────────────────────────────────
+  // Called after user sends anything (question chip OR typed message)
+  function onAnySend() {
+    if (!sessionActive) return;
+    clearInactiveTimer();
+    // If skip prompt was showing, go back to questions
+    if (barMode === "skip" && remaining.length > 0) {
+      showQuestions();
+    }
+    startInactiveTimer();
   }
 
-  // ── Send answer using existing system ─────────────────────────────────────
-  function sendAnswerAsMessage(text) {
-    if (!connected) return;
-    socket.emit("message", text);
-    appendMessage("you", text, "text");
-  }
+  // Hook into existing send triggers (non-destructive capture)
+  document.getElementById("sendBtn")?.addEventListener("click", onAnySend, true);
+  document.getElementById("messageInput")?.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) onAnySend();
+  }, true);
 
-  // ── Intercept incoming messages to check for question matches ────────────
-  // We monkey-patch the "message" socket listener ADDITION (non-destructive).
-  // Original listener at line ~567 still fires first.
+  // ── React to incoming messages ────────────────────────────────────────────
   socket.on("message", (text) => {
     if (!sessionActive) return;
     const trimmed = text.trim();
 
-    // Check if this incoming message is a question we have choices for
+    // Attach inline choices if this is a choice-question
     if (CHOICE_MAP[trimmed]) {
-      // Append interactive choice buttons to the last "them" bubble
       setTimeout(() => attachChoicesToLastBubble(trimmed, CHOICE_MAP[trimmed]), 30);
     }
 
-    // Any incoming message cancels the skip prompt / advances question state
-    if (barMode === "skip") {
-      showNextQuestion();
-    } else if (waitingForAnswer) {
-      waitingForAnswer = false;
-      // Small delay before showing next question so it feels natural
-      setTimeout(showNextQuestion, 800);
+    // Cancel skip prompt, resume questions
+    if (barMode === "skip" && remaining.length > 0) {
+      showQuestions();
     }
 
     clearInactiveTimer();
     startInactiveTimer();
   });
 
-  // When we send any message (typing + enter or send button), notify bar
-  // We do this by observing messageInput keydown + sendBtn click
-  function notifySent() {
-    if (!sessionActive) return;
-    onMessageActivity();
-  }
-
-  // Observe existing sendMessage triggers non-destructively
-  document.getElementById("sendBtn")?.addEventListener("click", notifySent, true);
-  document.getElementById("messageInput")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) notifySent();
-  }, true);
-
-  // ── Attach choice buttons to the last received bubble ────────────────────
+  // ── Attach inline answer choices to last received bubble ──────────────────
   function attachChoicesToLastBubble(questionText, choices) {
-    const allBubbles = document.querySelectorAll(".msg.them .msg-inner");
-    if (!allBubbles.length) return;
-    const lastInner = allBubbles[allBubbles.length - 1];
-
-    // Don't double-attach
-    if (lastInner.querySelector(".msg-choices")) return;
+    const allInners = document.querySelectorAll(".msg.them .msg-inner");
+    if (!allInners.length) return;
+    const lastInner = allInners[allInners.length - 1];
+    if (lastInner.querySelector(".msg-choices")) return; // already attached
 
     const choicesEl = document.createElement("div");
     choicesEl.className = "msg-choices";
-    choicesEl.setAttribute("data-question", questionText);
 
     choices.forEach(choice => {
       const btn = document.createElement("button");
@@ -1138,51 +1115,46 @@ showHome();
       btn.textContent = choice;
       btn.addEventListener("click", () => {
         if (choicesEl.classList.contains("answered")) return;
-        // Mark chosen
         choicesEl.classList.add("answered");
         btn.classList.add("chosen");
-        // Send as message
-        sendAnswerAsMessage(choice);
-        // Advance question bar
-        if (barMode === "skip") showNextQuestion();
-        else if (qIndex < QUESTIONS.length) {
-          setTimeout(showNextQuestion, 600);
-        }
+        // Send answer as normal message
+        socket.emit("message", choice);
+        appendMessage("you", choice, "text");
+        onAnySend();
       });
       choicesEl.appendChild(btn);
     });
 
     lastInner.appendChild(choicesEl);
-    // Scroll down to show choices
-    const msgsEl = document.getElementById("messages");
-    if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+    const msgs = document.getElementById("messages");
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
   }
 
-  // ── Reset on new match ────────────────────────────────────────────────────
-  socket.on("matched", () => {
-    qIndex           = 0;
-    waitingForAnswer = false;
-    sessionActive    = true;
-    barMode          = "none";
+  // ── Reset — called on new match / disconnect / skip ───────────────────────
+  function resetBar() {
+    sessionActive = false;
+    remaining     = [];
+    barMode       = "none";
     clearInactiveTimer();
-    // Show first question after a short welcome delay
-    setTimeout(showNextQuestion, 1200);
+    hideBar();
+    if (qbarChipsRow) qbarChipsRow.innerHTML = "";
+  }
+
+  // ── Start on new match ────────────────────────────────────────────────────
+  socket.on("matched", () => {
+    resetBar();
+    sessionActive = true;
+    // All questions available at start
+    remaining = QUESTIONS.map((_, i) => i);
+    // Show bar after brief welcome delay
+    setTimeout(showQuestions, 1200);
+    startInactiveTimer();
   });
 
-  // ── Reset on leaving chat ─────────────────────────────────────────────────
-  function resetBar() {
-    sessionActive    = false;
-    waitingForAnswer = false;
-    qIndex           = 0;
-    barMode          = "none";
-    hideBar();
-  }
-
-  socket.on("partnerLeft",  resetBar);
-  socket.on("waiting",      resetBar);
-  socket.on("disconnect",   resetBar);
-
-  // Also hook into back button and skip button resets
+  // ── Cleanup hooks ─────────────────────────────────────────────────────────
+  socket.on("partnerLeft", resetBar);
+  socket.on("waiting",     resetBar);
+  socket.on("disconnect",  resetBar);
   document.getElementById("btnBack")?.addEventListener("click", resetBar, true);
   document.getElementById("skipBtn")?.addEventListener("click", resetBar, true);
 
