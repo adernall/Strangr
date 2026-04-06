@@ -566,10 +566,12 @@ socket.on("partnerNickname", (name) => {
 
 socket.on("message", (text) => {
   appendMessage("them", text, "text");
+  if (document.visibilityState !== "visible") playChime();
 });
 
 socket.on("imageShare", (dataUrl) => {
   appendMessage("them", dataUrl, "image");
+  if (document.visibilityState !== "visible") playChime();
 });
 
 socket.on("igShare", (username) => {
@@ -769,12 +771,15 @@ imageInput?.addEventListener("change", () => {
 });
 
 function showImgPreview(dataUrl) {
-  clearPendingImg(true);
+  // Remove any old preview element only — do NOT reset pendingImg here
+  document.getElementById("imgPreviewWrap")?.remove();
+  const slot = document.getElementById("imgPreviewSlot");
+  if (!slot) return;
   const wrap = document.createElement("div");
   wrap.className = "img-preview-wrap";
   wrap.id = "imgPreviewWrap";
   wrap.innerHTML = `<img src="${dataUrl}" alt="preview" /><button class="img-preview-clear" id="imgPreviewClear" aria-label="Cancel">✕</button>`;
-  imgPreviewSlot.appendChild(wrap);
+  slot.appendChild(wrap);
   document.getElementById("imgPreviewClear")?.addEventListener("click", () => clearPendingImg(true));
 }
 
