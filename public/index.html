@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="video.css" />
 </head>
 <body>
 
@@ -385,16 +386,19 @@
       </div>
     </main>
 
-    <!-- ── Question bar ── -->
-<div class="qbar hidden" id="qbar" aria-live="polite">
-  <!-- Question chips row (horizontally scrollable) -->
-  <div class="qbar-chips-row" id="qbarChipsRow"></div>
-  <!-- Skip prompt (shown on inactivity) -->
-  <div class="qbar-skip-prompt hidden" id="qbarSkipPrompt">
-    <span class="qbar-skip-text">Been quiet for a while…</span>
-    <button class="qbar-skip-btn" id="qbarSkipBtn">Skip this stranger?</button>
-  </div>
-</div>
+    <!-- ── Question bar — sits between messages and input ── -->
+    <div class="qbar hidden" id="qbar" aria-live="polite">
+      <!-- Question mode -->
+      <div class="qbar-question" id="qbarQuestion">
+        <span class="qbar-label">Ask</span>
+        <button class="qbar-chip" id="qbarChip"></button>
+      </div>
+      <!-- Skip prompt mode -->
+      <div class="qbar-skip-prompt hidden" id="qbarSkipPrompt">
+        <span class="qbar-skip-text">Been quiet for a while…</span>
+        <button class="qbar-skip-btn" id="qbarSkipBtn">Skip this stranger?</button>
+      </div>
+    </div>
 
     <div class="chat-input-area">
       <div id="imgPreviewSlot"></div>
@@ -427,6 +431,12 @@
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             Report
+          </button>
+          <!-- Video call button -->
+          <button id="btnVideoCall" class="ci-btn ci-video" disabled title="Start video call" aria-label="Start video call">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -515,7 +525,105 @@
   </div>
 </div>
 
+
+<!-- ══════════════════ VIDEO CALL SCREEN ══════════════════ -->
+<div id="vcScreen">
+
+  <!-- ── DESKTOP (≥ 701px): Left | Center-emoji | Right-chat ── -->
+  <div class="vc-desktop">
+
+    <!-- LEFT COL -->
+    <div class="vc-left">
+
+      <!-- Stranger video — top-left -->
+      <div class="vc-tile" id="vcRemoteTileD">
+        <video id="vcRemoteD" autoplay playsinline></video>
+        <div class="vc-tile-lbl">Stranger</div>
+      </div>
+
+      <!-- My video — bottom-left -->
+      <div class="vc-tile" id="vcLocalTileD">
+        <video id="vcLocalD" autoplay playsinline muted></video>
+        <div class="vc-tile-lbl">You</div>
+      </div>
+
+      <!-- Controls — below both videos -->
+      <div class="vc-controls">
+        <button class="vc-ctrl" id="vcMicD" title="Mute"></button>
+        <button class="vc-ctrl" id="vcCamD" title="Camera off"></button>
+        <button class="vc-ctrl vc-ctrl-end" id="vcEndD">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.5 2.5a16 16 0 0 1 5 5l-2.83 2.83a2 2 0 0 0-.45 2.11 12.84 12.84 0 0 1 .7 2.81 2 2 0 0 1-2 1.72h-3a2 2 0 0 1-2-1.72 12.84 12.84 0 0 0-.7-2.81 2 2 0 0 0-2.11-.45L6.36 14.7a16 16 0 0 1-5-5"/></svg>
+          End
+        </button>
+      </div>
+
+    </div><!-- end vc-left -->
+
+    <!-- CENTER COL — emoji -->
+    <div class="vc-emoji-col">
+      <button class="vc-emoji-trigger-btn" id="vcEmojiTriggerD" title="Emoji">😊</button>
+      <div class="vc-ep" id="vcEmojiPanelD"></div>
+    </div>
+
+    <!-- RIGHT COL — chat (largest) -->
+    <div class="vc-chat-col">
+
+      <!-- Emoji float: appears center of this col on desktop -->
+      <div class="vc-emoji-float" id="vcEmojiFloatD"></div>
+
+      <div class="vc-chat-box">
+        <div class="vc-chat-hdr">Chat</div>
+
+        <!-- JS moves #messages + #typingIndicator here during call -->
+        <div class="vc-msg-area" id="vcMsgArea"></div>
+
+        <!-- JS moves #qbar + .chat-input-area here during call -->
+        <div class="vc-chat-footer" id="vcChatFooter"></div>
+      </div>
+
+    </div><!-- end vc-chat-col -->
+
+  </div><!-- end vc-desktop -->
+
+  <!-- ── MOBILE (≤ 700px) ── -->
+  <div class="vc-mobile">
+
+    <!-- Stranger video top -->
+    <div class="vc-mob-stranger" id="vcRemoteTileM">
+      <video id="vcRemoteM" autoplay playsinline></video>
+      <div class="vc-tile-lbl">Stranger</div>
+      <!-- Emoji float: bottom-right of this tile on mobile -->
+      <div class="vc-emoji-float-mob" id="vcEmojiFloatM"></div>
+    </div>
+
+    <!-- My video middle -->
+    <div class="vc-mob-me" id="vcLocalTileM">
+      <video id="vcLocalM" autoplay playsinline muted></video>
+      <div class="vc-tile-lbl">You</div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="vc-mob-bar">
+      <button class="vc-mob-btn" id="vcMicM"          title="Mute"></button>
+      <button class="vc-mob-btn" id="vcCamM"          title="Camera off"></button>
+      <button class="vc-mob-btn" id="vcEmojiTriggerM" title="Emoji">😊</button>
+      <button class="vc-mob-btn vc-mob-end" id="vcEndM" title="End call">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.5 2.5a16 16 0 0 1 5 5l-2.83 2.83a2 2 0 0 0-.45 2.11 12.84 12.84 0 0 1 .7 2.81 2 2 0 0 1-2 1.72h-3a2 2 0 0 1-2-1.72 12.84 12.84 0 0 0-.7-2.81 2 2 0 0 0-2.11-.45L6.36 14.7a16 16 0 0 1-5-5"/></svg>
+      </button>
+    </div>
+
+    <!-- Mobile emoji panel — slides up -->
+    <div class="vc-ep-mobile" id="vcEmojiPanelM">
+      <div class="ep-handle"></div>
+    </div>
+
+  </div><!-- end vc-mobile -->
+
+</div><!-- end vcScreen -->
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
+<script src="emojis.js"></script>
+<script src="video.js"></script>
 </body>
 </html>
