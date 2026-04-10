@@ -329,11 +329,31 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("drawStroke", data);
   });
 
-  // ── Clear canvas relay ─────────────────────────────────────────────────────
-  socket.on("clearCanvas", () => {
+ // ── VIDEO CALL SIGNALING — pure relay, server never touches media ─────────
+  ["vcRequest", "vcAccept", "vcDecline", "vcEnd", "vcEmoji"].forEach(ev => {
+    socket.on(ev, (data) => {
+      const roomId = userRoom[socket.id];
+      if (!roomId) return;
+      socket.to(roomId).emit(ev, data || {});
+    });
+  });
+
+  socket.on("vcOffer", ({ sdp } = {}) => {
     const roomId = userRoom[socket.id];
-    if (!roomId) return;
-    socket.to(roomId).emit("clearCanvas");
+    if (!roomId || typeof sdp !== "string") return;
+    socket.to(roomId).emit("vcOffer", { sdp });
+  });
+
+  socket.on("vcAnswer", ({ sdp } = {}) => {
+    const roomId = userRoom[socket.id];
+    if (!roomId || typeof sdp !== "string") return;
+    socket.to(roomId).emit("vcAnswer", { sdp });
+  });
+
+  socket.on("vcIce", ({ candidate } = {}) => {
+    const roomId = userRoom[socket.id];
+    if (!roomId || !candidate) return;
+    socket.to(roomId).emit("vcIce", { candidate });
   });
 
   // ── skip (UNCHANGED) ──────────────────────────────────────────────────────
