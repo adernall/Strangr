@@ -58,8 +58,12 @@
      BOOT
   ════════════════════════════════════════════════════════ */
   function boot() {
-    S = window.socket;
-    if (!S) { console.warn("[VC] socket not ready"); return; }
+    S = window.socket || (typeof socket !== "undefined" ? socket : null);
+    if (!S) {
+      // Socket not ready yet — retry in 200ms
+      setTimeout(boot, 200);
+      return;
+    }
 
     vcScreen      = document.getElementById("vcScreen");
     btnVC         = document.getElementById("btnVideoCall");

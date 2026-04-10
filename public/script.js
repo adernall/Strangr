@@ -157,6 +157,7 @@ let partnerUserId = "";
 // SOCKET
 // ══════════════════════════════════════════════════════════════════════════════
 const socket = io({ transports: ["websocket", "polling"], autoConnect: false });
+window.socket = socket;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PUSH NOTIFICATIONS
