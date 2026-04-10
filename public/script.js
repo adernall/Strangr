@@ -158,6 +158,9 @@ let partnerUserId = "";
 // ══════════════════════════════════════════════════════════════════════════════
 const socket = io({ transports: ["websocket", "polling"], autoConnect: false });
 window.socket = socket;
+window.showToast = showToast;
+window.appendMessage = (...args) => appendMessage(...args);
+window.connected = false;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PUSH NOTIFICATIONS
@@ -369,9 +372,12 @@ function setStatus(state, text) {
 
 function setInputEnabled(enabled) {
   connected = enabled;
+  window.connected = enabled;  // expose for video.js
   messageInput.disabled = !enabled;
   sendBtn.disabled = !enabled;
   btnImg.disabled = !enabled;
+  const vcBtn = document.getElementById("btnVideoCall");
+  if (vcBtn) vcBtn.disabled = !enabled;
   if (enabled) messageInput.focus();
 }
 
