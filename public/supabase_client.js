@@ -7,8 +7,8 @@
  *   3. Paste them below
  */
 
-const SUPABASE_URL  = "https://YOUR_PROJECT_ID.supabase.co";
-const SUPABASE_ANON = "YOUR_ANON_PUBLIC_KEY";
+const SUPABASE_URL  = "https://otjtydxwvlfhfwretpaa.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90anR5ZHh3dmxmaGZ3cmV0cGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTc2MzIsImV4cCI6MjA5MTQ5MzYzMn0.HAjLuhtdo62LBrYLVJZvODxbf7jQPghoKGs6jXOl-JY";
 
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
