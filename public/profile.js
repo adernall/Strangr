@@ -1,27 +1,23 @@
 /**
- * profile.js  —  Strangr Social: Profile Page
- * ──────────────────────────────────────────────
- * Fixes applied:
- *  - Waits for window.authReady (resolved by supabase_client.js INITIAL_SESSION)
- *    so there's no race condition between db init and auth state
- *  - Does a fresh getSession() as fallback — never stuck in loading
- *  - Passes pending profile creation through for email-confirmed users
+ * profile.js — Strangr Social: Profile Page
+ * Waits for supabase_client.js to finish its getSession() call,
+ * then renders the page. No race conditions.
  */
 "use strict";
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 const _toastEl = document.getElementById("toast");
-let _toastTimer;
+let _toastT;
 function showToast(msg, type = "") {
   if (!_toastEl) return;
   _toastEl.textContent = msg;
   _toastEl.className = `toast show${type ? " toast-" + type : ""}`;
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { _toastEl.className = "toast"; }, 3500);
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => { _toastEl.className = "toast"; }, 3500);
 }
 window.showToast = showToast;
 
-// ── Apply saved theme ─────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────────────
 document.documentElement.setAttribute(
   "data-theme", localStorage.getItem("strangr_theme") || "light"
 );
@@ -47,24 +43,11 @@ const saveSpinner      = document.getElementById("saveSpinner");
 const saveBtnText      = document.getElementById("saveBtnText");
 const gateSignInBtn    = document.getElementById("gateSignInBtn");
 
-// ── State ─────────────────────────────────────────────────────────────────────
 let currentProfile    = null;
 let pendingAvatarFile = null;
 
-// ── Wait for both window.db AND window.authReady ───────────────────────────────
-// window.authReady is a Promise resolved by supabase_client.js after INITIAL_SESSION
-function waitReady(cb, tries = 0) {
-  if (!window.db) {
-    if (tries > 50) { console.error("[profile] Supabase never loaded"); showGate(); return; }
-    return setTimeout(() => waitReady(cb, tries + 1), 100);
-  }
-  // db is ready — now wait for authReady promise
-  window.authReady.then(cb);
-}
-
-// ── Boot ─────────────────────────────────────────────────────────────────────
-waitReady(async () => {
-  // Inject nav auth widget slot for auth.js
+// ── Ensure nav auth widget slot exists ────────────────────────────────────────
+(function ensureNavWidget() {
   const navRight = document.getElementById("profileNavRight");
   if (navRight && !document.getElementById("navAuthWidget")) {
     const w = document.createElement("div");
@@ -72,30 +55,50 @@ waitReady(async () => {
     w.style.cssText = "display:flex;align-items:center;gap:8px;";
     navRight.appendChild(w);
   }
+})();
 
-  // Hook auth events from supabase_client.js
+// ── Wait for supabase_client.js init to complete, then boot ──────────────────
+// supabase_client.js sets window._authIsReady = true after getSession() resolves
+// and calls window._authInitDone() if defined.
+// We poll for _authIsReady as a safe fallback.
+function waitForAuthInit(cb, tries = 0) {
+  if (window._authIsReady) return cb();
+  if (tries > 60) {
+    // 3 seconds max wait — something went wrong, show gate
+    hideLoading(); showGate(); return;
+  }
+  // Register as the callback so it fires immediately when ready
+  window._authInitDone = cb;
+  // Also poll in case supabase_client.js already ran before this line
+  setTimeout(() => {
+    if (window._authIsReady && typeof window._authInitDone === "function") {
+      const fn = window._authInitDone;
+      window._authInitDone = null;
+      fn();
+    } else if (!window._authIsReady) {
+      waitForAuthInit(cb, tries + 1);
+    }
+  }, 50);
+}
+
+waitForAuthInit(async () => {
+  // supabase_client.js is done — auth state is now definitive
   window.onAuthSignedIn  = onSignedIn;
   window.onAuthSignedOut = onSignedOut;
 
-  // supabase_client.js has already resolved authReady, so auth state is set
   if (window.authUser) {
     await onSignedIn();
   } else {
-    // No session — show gate
     hideLoading();
     showGate();
   }
 });
 
+// ── Sign in / out handlers ────────────────────────────────────────────────────
 async function onSignedIn() {
-  // Reload profile fresh (in case it just got created after email confirm)
-  if (window.authUser) {
-    await window.loadProfile(window.authUser.id);
-  }
-
   // Handle pending profile from email-confirm flow
   const pending = localStorage.getItem("strangr_pending_profile");
-  if (pending && window.authUser && !window.authProfile) {
+  if (pending && window.authUser) {
     try {
       const data = JSON.parse(pending);
       if (data.id === window.authUser.id) {
@@ -104,6 +107,11 @@ async function onSignedIn() {
         await window.loadProfile(window.authUser.id);
       }
     } catch {}
+  }
+
+  // Reload profile to make sure it's fresh
+  if (window.authUser && !window.authProfile) {
+    await window.loadProfile(window.authUser.id);
   }
 
   currentProfile = window.authProfile;
@@ -117,24 +125,19 @@ async function onSignedIn() {
   renderProfileView();
   showCard();
   loadFriendCount();
-
-  // Re-render nav with proper username
   if (typeof window.renderAuthNav === "function") window.renderAuthNav();
 }
 
 function onSignedOut() {
   currentProfile = null;
-  hideLoading();
-  hideCard();
-  showGate();
+  hideLoading(); hideCard(); showGate();
   if (typeof window.renderAuthNav === "function") window.renderAuthNav();
 }
 
-// ── Render view ───────────────────────────────────────────────────────────────
+// ── Render ────────────────────────────────────────────────────────────────────
 function renderProfileView() {
   const p = currentProfile;
   if (!p) return;
-
   renderAvatar(p);
   setText("viewDisplayName", p.display_name || p.username);
   setText("viewUsername",    "@" + (p.username || ""));
@@ -164,18 +167,13 @@ async function loadFriendCount() {
   setText("statFriends", count ?? 0);
 }
 
-// ── Edit mode ─────────────────────────────────────────────────────────────────
-btnEditProfile?.addEventListener("click",  enterEditMode);
-btnCancelEdit?.addEventListener("click",   exitEditMode);
-btnSaveProfile?.addEventListener("click",  saveProfile);
-
-function enterEditMode() {
+// ── Edit ──────────────────────────────────────────────────────────────────────
+btnEditProfile?.addEventListener("click", () => {
   if (!currentProfile) return;
   if (editDisplayName) editDisplayName.value = currentProfile.display_name || "";
   if (editUsername)    editUsername.value    = currentProfile.username      || "";
   if (editBio)         editBio.value         = currentProfile.bio           || "";
   if (bioCharCount)    bioCharCount.textContent = (currentProfile.bio || "").length;
-
   profileInfoView?.classList.add("hidden");
   profileInfoEdit?.classList.remove("hidden");
   btnEditProfile?.classList.add("hidden");
@@ -184,7 +182,9 @@ function enterEditMode() {
   btnChangeAvatar?.classList.remove("hidden");
   profileEditError?.classList.add("hidden");
   pendingAvatarFile = null;
-}
+});
+
+btnCancelEdit?.addEventListener("click", exitEditMode);
 
 function exitEditMode() {
   pendingAvatarFile = null;
@@ -204,9 +204,8 @@ editUsername?.addEventListener("input", e => {
   e.target.value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
 });
 
-async function saveProfile() {
+btnSaveProfile?.addEventListener("click", async () => {
   if (!currentProfile) return;
-
   const newDisplay  = editDisplayName?.value.trim();
   const newUsername = editUsername?.value.trim().toLowerCase();
   const newBio      = editBio?.value.trim();
@@ -214,50 +213,48 @@ async function saveProfile() {
   if (!newDisplay)  { showEditErr("Display name cannot be empty."); return; }
   if (!newUsername) { showEditErr("Username cannot be empty.");     return; }
   if (!/^[a-z0-9_]{3,20}$/.test(newUsername)) {
-    showEditErr("Username: 3–20 chars, letters/numbers/underscore only."); return;
+    showEditErr("Username: 3–20 chars, letters/numbers/underscore."); return;
   }
 
-  setSaveLoading(true);
-  hideEditErr();
+  setSaveLoading(true); hideEditErr();
 
   if (newUsername !== currentProfile.username) {
     const { data: taken } = await window.db
       .from("profiles").select("id")
       .eq("username", newUsername).neq("id", currentProfile.id).maybeSingle();
-    if (taken) { setSaveLoading(false); showEditErr("That username is already taken."); return; }
+    if (taken) { setSaveLoading(false); showEditErr("That username is taken."); return; }
   }
 
   let avatarUrl = currentProfile.avatar_url;
   if (pendingAvatarFile) {
     const url = await uploadAvatar(pendingAvatarFile, currentProfile.id);
-    if (!url) { setSaveLoading(false); showEditErr("Avatar upload failed. Max 2 MB."); return; }
+    if (!url) { setSaveLoading(false); showEditErr("Avatar upload failed."); return; }
     avatarUrl = url;
   }
 
   const { data, error } = await window.db
     .from("profiles")
-    .update({ display_name: newDisplay, username: newUsername, bio: newBio, avatar_url: avatarUrl, updated_at: new Date().toISOString() })
-    .eq("id", currentProfile.id)
-    .select().single();
+    .update({ display_name: newDisplay, username: newUsername, bio: newBio, avatar_url: avatarUrl })
+    .eq("id", currentProfile.id).select().single();
 
   setSaveLoading(false);
   if (error) { showEditErr("Failed to save. Please try again."); return; }
 
   currentProfile = window.authProfile = data;
-  renderProfileView();
-  exitEditMode();
+  renderProfileView(); exitEditMode();
   showToast("Profile updated!", "success");
   if (typeof window.renderAuthNav === "function") window.renderAuthNav();
-}
+});
 
+// ── Avatar ────────────────────────────────────────────────────────────────────
 btnChangeAvatar?.addEventListener("click", () => avatarFileInput?.click());
 avatarFileInput?.addEventListener("change", () => {
   const file = avatarFileInput.files?.[0];
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { showEditErr("Image too large. Max 2 MB."); return; }
   pendingAvatarFile = file;
-  const url = URL.createObjectURL(file);
-  if (profileAvatar) profileAvatar.innerHTML = `<img src="${url}" alt="preview" class="profile-avatar-img"/>`;
+  if (profileAvatar) profileAvatar.innerHTML =
+    `<img src="${URL.createObjectURL(file)}" alt="preview" class="profile-avatar-img"/>`;
 });
 
 async function uploadAvatar(file, userId) {
@@ -275,13 +272,12 @@ gateSignInBtn?.addEventListener("click", () => {
   if (typeof window.openAuthModal === "function") window.openAuthModal("login");
 });
 
-// ── Visibility ────────────────────────────────────────────────────────────────
+// ── Visibility helpers ────────────────────────────────────────────────────────
 function showCard()    { profileCard?.classList.remove("hidden"); hideLoading(); hideGate(); }
 function showGate()    { profileGate?.classList.remove("hidden"); hideLoading(); hideCard(); }
 function hideCard()    { profileCard?.classList.add("hidden"); }
 function hideGate()    { profileGate?.classList.add("hidden"); }
 function hideLoading() { profileLoading?.classList.add("hidden"); }
-
 function setSaveLoading(on) {
   if (btnSaveProfile) btnSaveProfile.disabled = on;
   if (saveBtnText)    saveBtnText.style.opacity = on ? "0.5" : "1";
@@ -293,15 +289,14 @@ function showEditErr(msg) {
   profileEditError.classList.remove("hidden");
 }
 function hideEditErr() { profileEditError?.classList.add("hidden"); }
-
-// ── Utils ─────────────────────────────────────────────────────────────────────
 function setText(id, val) {
   const el = document.getElementById(id); if (el) el.textContent = val ?? "";
 }
 function fmtDate(iso, fmt = "long") {
   if (!iso) return "";
   const d = new Date(iso);
-  return fmt === "short" ? d.getFullYear().toString()
+  return fmt === "short"
+    ? d.getFullYear().toString()
     : d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 function escH(s) {

@@ -1,20 +1,19 @@
 /**
- * supabase_client.js  —  Strangr Social
- * ───────────────────────────────────────
- * HOW TO CONFIGURE:
- *   1. Go to supabase.com → your project → Settings → API
- *   2. Copy "Project URL" and "anon public" key
- *   3. Paste them below
+ * supabase_client.js — Strangr Social
+ *
+ * Configure: paste your Project URL and anon key below.
+ * Supabase Dashboard → Settings → API
  */
 
-const SUPABASE_URL  = "https://otjtydxwvlfhfwretpaa.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90anR5ZHh3dmxmaGZ3cmV0cGFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTc2MzIsImV4cCI6MjA5MTQ5MzYzMn0.HAjLuhtdo62LBrYLVJZvODxbf7jQPghoKGs6jXOl-JY";
+const SUPABASE_URL  = "https://YOUR_PROJECT_ID.supabase.co";
+const SUPABASE_ANON = "YOUR_ANON_PUBLIC_KEY";
 
+// Create client — session is automatically persisted in localStorage
 const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: {
-    persistSession:    true,   // keeps session in localStorage across reloads
-    autoRefreshToken:  true,
-    detectSessionInUrl:true,
+    persistSession:     true,
+    autoRefreshToken:   true,
+    detectSessionInUrl: true,
   }
 });
 
@@ -22,66 +21,57 @@ window.db          = _supa;
 window.authUser    = null;
 window.authProfile = null;
 
-// ── authReady: a Promise that resolves once the initial session check is done ──
-// profile.js waits on this so there's no race condition
-let _resolveAuthReady;
-window.authReady = new Promise(resolve => { _resolveAuthReady = resolve; });
-
-// ── Internal: call renderAuthNav safely (retries until auth.js has loaded it) ──
-function _renderNav() {
-  if (typeof window.renderAuthNav === "function") {
-    window.renderAuthNav();
-  } else {
-    // auth.js hasn't defined it yet — retry in 50ms
-    setTimeout(_renderNav, 50);
-  }
-}
-
-// ── Load profile from Supabase ─────────────────────────────────────────────────
+// ── loadProfile ───────────────────────────────────────────────────────────────
 async function loadProfile(userId) {
-  const { data, error } = await _supa
+  const { data } = await _supa
     .from("profiles")
     .select("*")
     .eq("id", userId)
     .single();
-
-  if (data) {
-    window.authProfile = data;
-  } else {
-    window.authProfile = null;
-    if (error && error.code !== "PGRST116") {
-      console.warn("[auth] loadProfile error:", error.message);
-    }
-  }
+  window.authProfile = data || null;
   return data || null;
 }
 window.loadProfile = loadProfile;
 
-// ── onAuthStateChange — handles ALL auth events including page-refresh restore ─
-// Supabase fires:
-//   INITIAL_SESSION  — on every page load (session from localStorage or null)
-//   SIGNED_IN        — after login
-//   SIGNED_OUT       — after logout
-//   TOKEN_REFRESHED  — silent token refresh
-_supa.auth.onAuthStateChange(async (event, session) => {
-  if (event === "INITIAL_SESSION") {
-    // This fires on every page load — it's the restored session (or null)
+// ── renderNav (safe wrapper — retries until auth.js defines it) ───────────────
+function renderNav() {
+  if (typeof window.renderAuthNav === "function") {
+    window.renderAuthNav();
+  } else {
+    setTimeout(renderNav, 40);
+  }
+}
+
+// ── MAIN INIT — use getSession(), never rely on INITIAL_SESSION event ─────────
+// getSession() reads directly from localStorage — always works on refresh
+(async function init() {
+  try {
+    const { data: { session } } = await _supa.auth.getSession();
     if (session?.user) {
       window.authUser = session.user;
       await loadProfile(session.user.id);
-    } else {
-      window.authUser    = null;
-      window.authProfile = null;
     }
-    _resolveAuthReady(); // unblock profile.js waitForAuth()
-    _renderNav();
-    return;
+  } catch (e) {
+    console.warn("[auth] getSession failed:", e.message);
   }
+
+  // Render nav after session is known
+  renderNav();
+
+  // Notify profile.js / any page waiting
+  if (typeof window._authInitDone === "function") window._authInitDone();
+  window._authIsReady = true;
+})();
+
+// ── onAuthStateChange — handles login / logout / token refresh ────────────────
+_supa.auth.onAuthStateChange(async (event, session) => {
+  // Skip INITIAL_SESSION — we handle it with getSession() above
+  if (event === "INITIAL_SESSION") return;
 
   if (event === "SIGNED_IN") {
     window.authUser = session.user;
     await loadProfile(session.user.id);
-    _renderNav();
+    renderNav();
     if (typeof window.onAuthSignedIn === "function") window.onAuthSignedIn();
     return;
   }
@@ -89,14 +79,13 @@ _supa.auth.onAuthStateChange(async (event, session) => {
   if (event === "SIGNED_OUT") {
     window.authUser    = null;
     window.authProfile = null;
-    _renderNav();
+    renderNav();
     if (typeof window.onAuthSignedOut === "function") window.onAuthSignedOut();
     return;
   }
 
   if (event === "TOKEN_REFRESHED" && session?.user) {
     window.authUser = session.user;
-    // Don't reload profile on every token refresh — it's already loaded
     if (!window.authProfile) await loadProfile(session.user.id);
     return;
   }
@@ -104,7 +93,7 @@ _supa.auth.onAuthStateChange(async (event, session) => {
   if (event === "USER_UPDATED" && session?.user) {
     window.authUser = session.user;
     await loadProfile(session.user.id);
-    _renderNav();
+    renderNav();
     return;
   }
 });
