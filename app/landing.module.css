@@ -199,22 +199,19 @@
 
 /* ── RIGHT — GIF ── */
 .heroRight {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 30%;
   height: 100vh;
-  position: relative;
-  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .gifWrap {
   position: relative;
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .heroGif {
@@ -226,22 +223,32 @@
   pointer-events: none;
 }
 
-/* Smooth gradient fade — left edge blends into black */
+/* Smooth gradient — left edge fades into black, no hard line */
 .gifFadeLeft {
   position: absolute;
   top: 0; left: 0;
-  width: 55%;
+  width: 80%;
   height: 100%;
-  background: linear-gradient(to right, #000000 0%, #000000 20%, transparent 100%);
+  background: linear-gradient(to right, #000000 0%, #000000 10%, rgba(0,0,0,0.95) 30%, rgba(0,0,0,0.7) 60%, transparent 100%);
   pointer-events: none;
   z-index: 2;
 }
 
-/* Smooth gradient fade — bottom */
+/* Top fade */
+.gifFadeTop {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 25%;
+  background: linear-gradient(to bottom, #000000 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Bottom fade */
 .gifFadeBottom {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  height: 30%;
+  height: 35%;
   background: linear-gradient(to top, #000000 0%, transparent 100%);
   pointer-events: none;
   z-index: 2;

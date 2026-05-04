@@ -64,8 +64,9 @@ export default function LandingPage() {
               className={styles.heroGif}
               draggable={false}
             />
-            {/* Fade overlay — blends left edge into black */}
+            {/* Fade overlays — smooth blend into black */}
             <div className={styles.gifFadeLeft} />
+            <div className={styles.gifFadeTop} />
             <div className={styles.gifFadeBottom} />
           </div>
         </div>
