@@ -1,0 +1,17 @@
+.shell {
+  min-height: 100vh;
+  background: #0a0a0c;
+}
+
+.main {
+  padding-top: 52px;
+  padding-left: 170px;
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding-left: 0;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+}

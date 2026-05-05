@@ -1,0 +1,206 @@
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  background: rgba(10,10,12,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 0 1rem;
+  gap: 12px;
+}
+.left {
+  flex-shrink: 0;
+  width: 170px;
+  display: flex;
+  align-items: center;
+}
+.logoDesktop {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+}
+.logoImg { width: 22px; height: 22px; object-fit: contain; }
+.logoText {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.betaBadge {
+  background: #fff;
+  color: #000;
+  font-family: 'Syne', sans-serif;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+}
+.logoMobile {
+  display: none;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: -0.5px;
+}
+.center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.searchWrap {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+}
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255,255,255,0.3);
+  pointer-events: none;
+}
+.searchInput {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 8px 14px 8px 34px;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.searchInput::placeholder { color: rgba(255,255,255,0.25); }
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.09);
+}
+.right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.createBtn {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.createBtn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.mobileSearchBtn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  padding: 6px;
+}
+.bellBtn {
+  position: relative;
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.bellBtn:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.bellDot {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 7px; height: 7px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 1.5px solid #0a0a0c;
+}
+.avatarWrap { position: relative; }
+.avatarBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  color: rgba(255,255,255,0.4);
+}
+.avatarBtn:hover { background: rgba(255,255,255,0.07); }
+.avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.dropdownOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+}
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 180px;
+  background: #18181f;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 6px;
+  z-index: 300;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+.dropItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.12s, color 0.12s;
+}
+.dropItem:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.dropDivider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 4px 0;
+}
+@media (max-width: 768px) {
+  .left { width: auto; }
+  .logoDesktop { display: none; }
+  .logoMobile { display: block; }
+  .center { display: none; }
+  .createBtn { display: none; }
+  .bellBtn { display: none; }
+  .avatarWrap { display: none; }
+  .mobileSearchBtn { display: flex; }
+}

@@ -1,0 +1,100 @@
+.sidebar {
+  position: fixed;
+  top: 52px; left: 0;
+  width: 170px;
+  height: calc(100vh - 52px);
+  background: #0a0a0c;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0.75rem;
+  z-index: 100;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar::-webkit-scrollbar { display: none; }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+.navItem:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
+.active { background: rgba(255,255,255,0.08); color: #fff; }
+.navIcon { display: flex; align-items: center; flex-shrink: 0; }
+.navLabel { font-family: 'DM Sans', sans-serif; }
+.activeStrip {
+  margin-top: auto;
+  padding: 14px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+}
+.activeAvatars {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.activeAvatar {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid #0a0a0c;
+  margin-left: -5px;
+  flex-shrink: 0;
+}
+.activeAvatar:first-child { margin-left: 0; }
+.activeMore {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  margin-left: 6px;
+}
+.activeDesc {
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.4;
+  margin-bottom: 2px;
+}
+.activeHandle {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 10px;
+}
+.activeBtns { display: flex; gap: 6px; }
+.joinBtn {
+  flex: 1;
+  background: #CDFF50;
+  color: #000;
+  border: none;
+  border-radius: 100px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: opacity 0.15s;
+}
+.joinBtn:hover { opacity: 0.85; }
+.notBtn {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s;
+}
+.notBtn:hover { background: rgba(255,255,255,0.11); }
+@media (max-width: 768px) { .sidebar { display: none; } }

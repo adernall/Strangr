@@ -1,0 +1,68 @@
+.bottomNav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  height: 64px;
+  background: rgba(10,10,12,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  color: rgba(255,255,255,0.35);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.tab:hover { color: rgba(255,255,255,0.7); }
+.active { color: #fff; }
+.createBtn {
+  width: 50px; height: 50px;
+  border-radius: 16px;
+  background: #fff;
+  border: none;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+  box-shadow: 0 4px 20px rgba(255,255,255,0.15);
+}
+.createBtn:active { transform: scale(0.93); }
+.multiAvatarWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.miniAvatar {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid #0a0a0c;
+  flex-shrink: 0;
+}
+.onlineDot {
+  position: absolute;
+  top: -1px; right: -4px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 1.5px solid #0a0a0c;
+}
+.profileAvatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.15);
+}
+@media (max-width: 768px) { .bottomNav { display: flex; } }
